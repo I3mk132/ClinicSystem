@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>عيادة النموذج الطبية</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Cairo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+<link rel="stylesheet" href="assets/css/animations.css">
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<main class="main-content">
+
+  <!-- ============================== Hero ============================== -->
+  <section class="hero">
+    <div class="hero-blob hero-blob-1"></div>
+    <div class="hero-blob hero-blob-2"></div>
+    <div class="container hero-inner">
+      <div data-reveal>
+        <span class="eyebrow" data-i18n="home.heroEyebrow"></span>
+        <h1 data-i18n="home.heroTitle"></h1>
+        <p style="font-size:1.05rem; max-width: 46ch;" data-i18n="home.heroSubtitle"></p>
+        <div class="hero-actions">
+          <a href="booking.html" class="btn btn-primary" data-i18n="home.ctaBook"></a>
+          <a href="#departments" class="btn btn-ghost" data-i18n="home.ctaDepartments"></a>
+        </div>
+        <div class="hero-stats">
+          <div class="hero-stat"><b id="stat-departments">—</b><span data-i18n="home.statDepartments"></span></div>
+          <div class="hero-stat"><b id="stat-doctors">—</b><span data-i18n="home.statDoctors"></span></div>
+          <div class="hero-stat"><b class="mono">1</b><span data-i18n="home.statBooking"></span></div>
+        </div>
+      </div>
+
+      <div class="hero-card" data-reveal>
+        <h3 data-i18n="home.heroCardTitle" style="margin-bottom:16px;"></h3>
+        <div class="hero-card-row">
+          <span class="hero-card-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M8 2v3M16 2v3M3.5 9h17M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
+          <span data-i18n="home.heroCardRow1"></span>
+        </div>
+        <div class="hero-card-row">
+          <span class="hero-card-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 8v4l3 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/></svg>
+          </span>
+          <span data-i18n="home.heroCardRow2"></span>
+        </div>
+        <div class="hero-card-row">
+          <span class="hero-card-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="m5 13 4 4L19 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
+          <span data-i18n="home.heroCardRow3"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================== Departments =========================== -->
+  <section id="departments">
+    <div class="container">
+      <div class="text-center" style="max-width:600px; margin:0 auto 40px;" data-reveal>
+        <h2 data-i18n="home.departmentsTitle"></h2>
+        <p data-i18n="home.departmentsSubtitle"></p>
+      </div>
+      <div class="grid grid-4" id="departments-grid" data-reveal-group>
+        <!-- injected by home.js -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================== How it works =========================== -->
+  <section class="section-tight" style="background:var(--color-bg-alt);">
+    <div class="container">
+      <h2 class="text-center" style="margin-bottom:40px;" data-i18n="home.howItWorksTitle" data-reveal></h2>
+      <div class="grid grid-3" data-reveal-group>
+        <div class="card card-pad">
+          <div class="dept-icon mono">1</div>
+          <h3 data-i18n="home.step1Title"></h3>
+          <p data-i18n="home.step1Desc"></p>
+        </div>
+        <div class="card card-pad">
+          <div class="dept-icon mono">2</div>
+          <h3 data-i18n="home.step2Title"></h3>
+          <p data-i18n="home.step2Desc"></p>
+        </div>
+        <div class="card card-pad">
+          <div class="dept-icon mono">3</div>
+          <h3 data-i18n="home.step3Title"></h3>
+          <p data-i18n="home.step3Desc"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ Bottom CTA ============================ -->
+  <section class="text-center" data-reveal>
+    <div class="container">
+      <h2 data-i18n="home.ctaBottomTitle"></h2>
+      <p style="max-width:50ch; margin:0 auto 24px;" data-i18n="home.ctaBottomSubtitle"></p>
+      <a href="booking.html" class="btn btn-accent" data-i18n="home.ctaBottomButton"></a>
+    </div>
+  </section>
+
+</main>
+
+<div id="site-footer"></div>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/auth.js"></script>
+<script src="assets/js/api.js"></script>
+<script src="assets/js/i18n.js"></script>
+<script src="assets/js/layout.js"></script>
+<script src="assets/js/icons.js"></script>
+<script src="assets/js/home.js"></script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+# --- Python / backend ---
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.db
+*.sqlite3
+.env
+.demo_api_key.txt
+
+# --- Editors / OS ---
+.vscode/
+.idea/
+.DS_Store
+
+# --- Node (if you later add a build step for the frontend) ---
+node_modules/

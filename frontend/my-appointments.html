@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="myAppointments.title">مواعيدي</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Cairo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+<link rel="stylesheet" href="assets/css/animations.css">
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<main class="main-content">
+  <div class="container" style="max-width: 760px; padding-top:40px; padding-bottom:80px;">
+    <h1 style="font-size:2rem;" data-i18n="myAppointments.title"></h1>
+    <p data-i18n="myAppointments.subtitle" style="margin-bottom:32px;"></p>
+
+    <div id="empty-state" class="empty-state" hidden>
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none"><path d="M8 2v3M16 2v3M3.5 9h17M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.5"/></svg>
+      <h3 data-i18n="myAppointments.empty"></h3>
+      <p data-i18n="myAppointments.emptyDesc"></p>
+      <a href="booking.html" class="btn btn-primary" data-i18n="myAppointments.bookNow"></a>
+    </div>
+
+    <div id="upcoming-section" hidden>
+      <h3 data-i18n="myAppointments.upcoming" style="margin-bottom:16px;"></h3>
+      <div class="stack" id="upcoming-list"></div>
+    </div>
+
+    <div id="past-section" style="margin-top:40px;" hidden>
+      <h3 data-i18n="myAppointments.past" style="margin-bottom:16px;"></h3>
+      <div class="stack" id="past-list"></div>
+    </div>
+  </div>
+</main>
+
+<div id="site-footer"></div>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/auth.js"></script>
+<script src="assets/js/api.js"></script>
+<script src="assets/js/i18n.js"></script>
+<script src="assets/js/layout.js"></script>
+<script src="assets/js/my-appointments.js"></script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+import enum
+from datetime import datetime
+
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.core.database import Base
+from app.models.user import ContactMethod
+
+
+class VerificationPurpose(str, enum.Enum):
+    ACCOUNT_VERIFY = "account_verify"
+    PASSWORD_RESET = "password_reset"
+
+
+class VerificationCode(Base):
+    """
+    A short-lived one-time code sent by email or SMS (see app/notifications.py).
+    Used for both "verify my new account" and "forgot password" flows so the
+    two features share one expiry/consumption mechanism.
+
+    The code itself is stored hashed (same as passwords) - never in plain
+    text - so a leaked database doesn't hand out valid codes.
+    """
+
+    __tablename__ = "verification_codes"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    purpose: Mapped[VerificationPurpose] = mapped_column(Enum(VerificationPurpose), nullable=False)
+    channel: Mapped[ContactMethod] = mapped_column(Enum(ContactMethod), nullable=False)
+
+    hashed_code: Mapped[str] = mapped_column(String(255), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    is_used: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User")

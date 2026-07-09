@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title data-i18n="admin.title">لوحة التحكم</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Cairo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+<link rel="stylesheet" href="assets/css/animations.css">
+</head>
+<body>
+
+<div id="site-header"></div>
+
+<main class="main-content">
+  <div class="container" style="padding-top:40px; padding-bottom:80px;">
+    <h1 style="font-size:1.8rem; margin-bottom:28px;" data-i18n="admin.title"></h1>
+
+    <div class="admin-shell">
+      <nav class="admin-tabs" id="admin-tabs">
+        <button class="admin-tab active" data-tab="overview" data-i18n="admin.tabOverview"></button>
+        <button class="admin-tab" data-tab="appointments" data-i18n="admin.tabAppointments"></button>
+        <button class="admin-tab" data-tab="doctors" data-i18n="admin.tabDoctors"></button>
+        <button class="admin-tab" data-tab="departments" data-i18n="admin.tabDepartments"></button>
+        <button class="admin-tab" data-tab="schedules" data-i18n="admin.tabSchedules"></button>
+        <button class="admin-tab" data-tab="integrations" data-i18n="admin.tabIntegrations"></button>
+      </nav>
+
+      <div>
+        <!-- Overview -->
+        <section class="admin-panel active" data-panel="overview">
+          <div class="grid grid-4" id="overview-stats"></div>
+        </section>
+
+        <!-- Appointments -->
+        <section class="admin-panel" data-panel="appointments">
+          <div class="filter-bar">
+            <select id="filter-status">
+              <option value="" data-i18n="admin.filterAll"></option>
+              <option value="confirmed" data-i18n="status.confirmed"></option>
+              <option value="completed" data-i18n="status.completed"></option>
+              <option value="cancelled" data-i18n="status.cancelled"></option>
+              <option value="no_show" data-i18n="status.no_show"></option>
+            </select>
+            <select id="filter-doctor"><option value="" data-i18n="admin.filterAll"></option></select>
+            <input type="date" id="filter-date-from">
+            <input type="date" id="filter-date-to">
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th data-i18n="admin.patient"></th>
+                  <th data-i18n="admin.doctor"></th>
+                  <th data-i18n="admin.department"></th>
+                  <th data-i18n="admin.date"></th>
+                  <th data-i18n="admin.statusLabel"></th>
+                  <th data-i18n="common.actions"></th>
+                </tr>
+              </thead>
+              <tbody id="appointments-tbody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Doctors -->
+        <section class="admin-panel" data-panel="doctors">
+          <div class="row" style="justify-content:flex-end; margin-bottom:14px;">
+            <button class="btn btn-primary btn-sm" id="add-doctor-btn" data-i18n="admin.addDoctor"></button>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th data-i18n="admin.doctor"></th>
+                  <th data-i18n="admin.department"></th>
+                  <th data-i18n="common.active"></th>
+                  <th data-i18n="common.actions"></th>
+                </tr>
+              </thead>
+              <tbody id="doctors-tbody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Departments -->
+        <section class="admin-panel" data-panel="departments">
+          <div class="row" style="justify-content:flex-end; margin-bottom:14px;">
+            <button class="btn btn-primary btn-sm" id="add-department-btn" data-i18n="admin.addDepartment"></button>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th data-i18n="admin.nameAr"></th>
+                  <th data-i18n="admin.nameTr"></th>
+                  <th data-i18n="common.active"></th>
+                  <th data-i18n="common.actions"></th>
+                </tr>
+              </thead>
+              <tbody id="departments-tbody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Schedules -->
+        <section class="admin-panel" data-panel="schedules">
+          <div class="field" style="max-width:320px;">
+            <label data-i18n="admin.doctor"></label>
+            <select id="schedule-doctor-select"></select>
+          </div>
+
+          <div id="schedule-content" hidden>
+            <div class="row" style="justify-content:space-between; margin-top:20px;">
+              <h3 data-i18n="admin.manageWeeklyHours" style="margin:0;"></h3>
+              <button class="btn btn-primary btn-sm" id="add-availability-btn" data-i18n="admin.addAvailability"></button>
+            </div>
+            <div class="table-wrap" style="margin-top:12px;">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th data-i18n="admin.weekday"></th>
+                    <th data-i18n="admin.startTime"></th>
+                    <th data-i18n="admin.endTime"></th>
+                    <th data-i18n="admin.slotDuration"></th>
+                    <th data-i18n="common.actions"></th>
+                  </tr>
+                </thead>
+                <tbody id="availabilities-tbody"></tbody>
+              </table>
+            </div>
+
+            <div class="row" style="justify-content:space-between; margin-top:32px;">
+              <h3 data-i18n="admin.manageTimeOff" style="margin:0;"></h3>
+              <button class="btn btn-primary btn-sm" id="add-timeoff-btn" data-i18n="admin.addTimeOff"></button>
+            </div>
+            <div class="table-wrap" style="margin-top:12px;">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th data-i18n="admin.date"></th>
+                    <th data-i18n="admin.reason"></th>
+                    <th data-i18n="common.actions"></th>
+                  </tr>
+                </thead>
+                <tbody id="timeoff-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+          <p class="muted" id="schedule-placeholder" data-i18n="admin.selectDoctorFirst" style="margin-top:20px;"></p>
+        </section>
+
+        <!-- Integrations (public API keys) -->
+        <section class="admin-panel" data-panel="integrations">
+          <div class="card card-pad" style="margin-bottom:20px;">
+            <h3 data-i18n="admin.apiKeysTitle" style="margin-bottom:8px;"></h3>
+            <p class="muted" data-i18n="admin.apiKeysDesc" style="margin-bottom:0;"></p>
+          </div>
+
+          <div class="row" style="justify-content:space-between; margin-bottom:14px;">
+            <a href="#" target="_blank" id="api-docs-link" class="btn btn-ghost btn-sm" data-i18n="admin.viewApiDocs"></a>
+            <button class="btn btn-primary btn-sm" id="add-api-key-btn" data-i18n="admin.addApiKey"></button>
+          </div>
+
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th data-i18n="admin.keyName"></th>
+                  <th>Key</th>
+                  <th data-i18n="common.active"></th>
+                  <th data-i18n="admin.lastUsed"></th>
+                  <th data-i18n="common.actions"></th>
+                </tr>
+              </thead>
+              <tbody id="api-keys-tbody"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="site-footer"></div>
+<div id="modal-host"></div>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/auth.js"></script>
+<script src="assets/js/api.js"></script>
+<script src="assets/js/i18n.js"></script>
+<script src="assets/js/layout.js"></script>
+<script src="assets/js/icons.js"></script>
+<script src="assets/js/admin.js"></script>
+</body>
+</html>
