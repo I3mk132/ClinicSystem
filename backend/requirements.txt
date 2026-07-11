@@ -11,7 +11,7 @@ python-dotenv==1.0.1
 email-validator==2.2.0
 
 # Optional production DB drivers (uncomment what you need):
-# psycopg2-binary==2.9.9      # PostgreSQL
+psycopg2-binary==2.9.9      # PostgreSQL
 # PyMySQL==1.1.1               # MySQL / MariaDB
 
 # Optional: only needed if you set SMS_PROVIDER=twilio in .env
