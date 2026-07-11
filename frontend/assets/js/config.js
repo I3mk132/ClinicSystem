@@ -12,5 +12,5 @@ window.CLINIC_CONFIG = {
     ar: "عيادة النموذج الطبية",
     tr: "Örnek Klinik",
   },
-  CLINIC_LOGO_URL: "../img/Logo_Nbg.png", // e.g. "assets/images/logo.png" - falls back to a generated mark
+  CLINIC_LOGO_URL: "assets/img/Logo_Nbg.png" // e.g. "assets/images/logo.png" - falls back to a generated mark
 };
