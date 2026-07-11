@@ -4,7 +4,7 @@
  * you deploy the API somewhere else (and nowhere else in the codebase).
  */
 window.CLINIC_CONFIG = {
-  API_BASE_URL: "http://127.0.0.1:8000/api/v1",
+  API_BASE_URL: "https://clinic-api-6khk.onrender.com",
 
   // Shown in the navbar / footer / booking confirmation until you replace
   // it with your real clinic branding. See README for how to customize.
