@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./clinic.db"
 
     # --- CORS ---
-    CORS_ORIGINS: str = "http://localhost:5500,http://127.0.0.1:5500,https://clinic-api-6khk.onrender.com"
+    CORS_ORIGINS: str = "http://localhost:5500,http://127.0.0.1:5500"
 
     # --- Default admin (created by seed script) ---
     FIRST_ADMIN_EMAIL: str = "admin@myclinic.com"
