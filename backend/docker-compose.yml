@@ -33,10 +33,11 @@ services:
       SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in the stack environment}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-1440}
 
-      # SQLite file on the persistent volume below. To switch to PostgreSQL
-      # later: uncomment the db service + this URL, no code changes needed.
-      DATABASE_URL: sqlite:////data/clinic.db
-      # DATABASE_URL: postgresql+psycopg2://clinic:${POSTGRES_PASSWORD}@clinic-db:5432/clinic
+      # Using PostgreSQL (clinic-db service below). To go back to the simpler
+      # zero-setup SQLite instead, comment the line below and uncomment the
+      # sqlite one - no code changes needed either way.
+      # DATABASE_URL: sqlite:////data/clinic.db
+      DATABASE_URL: postgresql+psycopg2://clinic:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the stack environment}@clinic-db:5432/clinic
 
       # Comma-separated list of origins allowed to call the API - set this to
       # wherever the frontend is served from (scheme + host, no trailing slash).
@@ -71,19 +72,46 @@ services:
       TWILIO_FROM_NUMBER: ${TWILIO_FROM_NUMBER:-}
     volumes:
       - clinic_data:/data
+    depends_on:
+      clinic-db:
+        # Wait until Postgres is actually accepting connections (not just
+        # started) before booting the API, so the first-run seed doesn't fail.
+        condition: service_healthy
 
-  # --- Optional: PostgreSQL for bigger deployments -------------------------
-  # clinic-db:
-  #   image: postgres:16-alpine
-  #   container_name: clinic-db
-  #   restart: unless-stopped
-  #   environment:
-  #     POSTGRES_DB: clinic
-  #     POSTGRES_USER: clinic
-  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
-  #   volumes:
-  #     - clinic_pgdata:/var/lib/postgresql/data
+  # --- PostgreSQL -----------------------------------------------------------
+  clinic-db:
+    image: postgres:16-alpine
+    container_name: clinic-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: clinic
+      POSTGRES_USER: clinic
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the stack environment}
+    volumes:
+      - clinic_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clinic -d clinic"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Not published to the host - only the API container reaches it over the
+    # internal compose network. Nothing to expose publicly.
+
+  # --- Cloudflare Tunnel: exposes the API at https://api.dijivoo.com --------
+  # No inbound ports opened on the VPS - cloudflared dials OUT to Cloudflare.
+  # In the Cloudflare Zero Trust dashboard, set the tunnel's Public Hostname:
+  #   Subdomain: api   Domain: dijivoo.com   Service: http://clinic-api:8000
+  # Then put the tunnel token in the TUNNEL_TOKEN stack variable.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: clinic-tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?Set TUNNEL_TOKEN in the stack environment}
+    depends_on:
+      - clinic-api
 
 volumes:
   clinic_data:
-  # clinic_pgdata:
+  clinic_pgdata:
