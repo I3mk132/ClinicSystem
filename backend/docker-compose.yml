@@ -22,7 +22,7 @@ services:
     ports:
       # host:container - change the left side if 8000 is taken on the VPS,
       # or remove "ports" entirely and attach a reverse proxy network instead.
-      - "8000:8000"
+      - "8001:8000"
     environment:
       ENVIRONMENT: production
       APP_NAME: "Clinic Booking System"
