@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -8,10 +10,19 @@ from app.routers import api_keys, appointments, auth, departments, doctors, publ
 # Import models so they're registered on Base.metadata before create_all()
 from app import models  # noqa: F401
 
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    # For local/dev use. For production, prefer proper migrations (e.g. Alembic).
+    Base.metadata.create_all(bind=engine)
+    yield
+
+
 app = FastAPI(
     title=settings.APP_NAME,
     description="REST API for a medical clinic appointment booking portal.",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -21,12 +32,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-def on_startup():
-    # For local/dev use. For production, prefer proper migrations (e.g. Alembic).
-    Base.metadata.create_all(bind=engine)
 
 
 @app.get("/", tags=["Health"])

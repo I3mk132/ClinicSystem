@@ -31,25 +31,25 @@
     backdrop.className = "modal-backdrop open";
     backdrop.innerHTML = `
       <div class="modal">
-        <h3>${title}</h3>
+        <h3>${esc(title)}</h3>
         <div class="form-error" id="modal-error"></div>
         <form id="modal-form">
           ${fields
             .map((f) => {
               const value = initialValues[f.name] ?? "";
               if (f.type === "select") {
-                return `<div class="field"><label>${f.label}</label>
+                return `<div class="field"><label>${esc(f.label)}</label>
                   <select name="${f.name}" ${f.required ? "required" : ""}>
-                    ${f.options.map((o) => `<option value="${o.value}" ${String(o.value) === String(value) ? "selected" : ""}>${o.label}</option>`).join("")}
+                    ${f.options.map((o) => `<option value="${esc(o.value)}" ${String(o.value) === String(value) ? "selected" : ""}>${esc(o.label)}</option>`).join("")}
                   </select></div>`;
               }
               if (f.type === "textarea") {
-                return `<div class="field"><label>${f.label}</label><textarea name="${f.name}" ${f.required ? "required" : ""}>${value}</textarea></div>`;
+                return `<div class="field"><label>${esc(f.label)}</label><textarea name="${f.name}" ${f.required ? "required" : ""}>${esc(value)}</textarea></div>`;
               }
               if (f.type === "checkbox") {
-                return `<div class="field row"><input type="checkbox" name="${f.name}" style="width:auto;" ${value ? "checked" : ""}><label style="margin:0;">${f.label}</label></div>`;
+                return `<div class="field row"><input type="checkbox" name="${f.name}" style="width:auto;" ${value ? "checked" : ""}><label style="margin:0;">${esc(f.label)}</label></div>`;
               }
-              return `<div class="field"><label>${f.label}</label><input type="${f.type || "text"}" name="${f.name}" value="${value}" ${f.required ? "required" : ""} ${f.min !== undefined ? `min="${f.min}"` : ""} ${f.step ? `step="${f.step}"` : ""}></div>`;
+              return `<div class="field"><label>${esc(f.label)}</label><input type="${f.type || "text"}" name="${f.name}" value="${esc(value)}" ${f.required ? "required" : ""} ${f.min !== undefined ? `min="${f.min}"` : ""} ${f.step ? `step="${f.step}"` : ""}></div>`;
             })
             .join("")}
           <div class="row" style="justify-content:flex-end; margin-top:8px;">
@@ -170,9 +170,9 @@
       .map(
         (a) => `
       <tr>
-        <td>${a.patient.full_name}</td>
-        <td>${a.doctor.full_name}</td>
-        <td>${deptLabel(a.department)}</td>
+        <td>${esc(a.patient.full_name)}</td>
+        <td>${esc(a.doctor.full_name)}</td>
+        <td>${esc(deptLabel(a.department))}</td>
         <td class="mono">${a.appointment_date} · ${a.start_time.slice(0, 5)}</td>
         <td><span class="badge badge-${a.status}">${I18n.statusLabel(a.status)}</span></td>
         <td>
@@ -201,7 +201,7 @@
     if (!cache.doctors.length) await refreshCache();
     const select = document.getElementById("filter-doctor");
     if (select.options.length <= 1) {
-      cache.doctors.forEach((d) => select.insertAdjacentHTML("beforeend", `<option value="${d.id}">${d.full_name}</option>`));
+      cache.doctors.forEach((d) => select.insertAdjacentHTML("beforeend", `<option value="${d.id}">${esc(d.full_name)}</option>`));
     }
   }
   ["filter-status", "filter-doctor", "filter-date-from", "filter-date-to"].forEach((id) => {
@@ -222,8 +222,8 @@
       .map(
         (d) => `
       <tr>
-        <td>${d.name_ar}</td>
-        <td>${d.name_tr}</td>
+        <td>${esc(d.name_ar)}</td>
+        <td>${esc(d.name_tr)}</td>
         <td>${d.is_active ? I18n.t("common.active") : I18n.t("common.inactive")}</td>
         <td class="row">
           <button class="btn btn-ghost btn-sm" data-edit-dept="${d.id}">${I18n.t("common.edit")}</button>
@@ -300,8 +300,8 @@
       .map(
         (d) => `
       <tr>
-        <td>${d.full_name}</td>
-        <td>${d.department ? deptLabel(d.department) : "—"}</td>
+        <td>${esc(d.full_name)}</td>
+        <td>${d.department ? esc(deptLabel(d.department)) : "—"}</td>
         <td>${d.is_active ? I18n.t("common.active") : I18n.t("common.inactive")}</td>
         <td class="row">
           <button class="btn btn-ghost btn-sm" data-edit-doc="${d.id}">${I18n.t("common.edit")}</button>
@@ -377,7 +377,7 @@
   async function loadScheduleDoctorOptions() {
     if (!cache.doctors.length) await refreshCache();
     const select = document.getElementById("schedule-doctor-select");
-    select.innerHTML = `<option value="">—</option>` + cache.doctors.map((d) => `<option value="${d.id}">${d.full_name}</option>`).join("");
+    select.innerHTML = `<option value="">—</option>` + cache.doctors.map((d) => `<option value="${d.id}">${esc(d.full_name)}</option>`).join("");
   }
 
   document.getElementById("schedule-doctor-select").addEventListener("change", (e) => {
@@ -465,7 +465,7 @@
         (t) => `
       <tr>
         <td class="mono">${t.date}</td>
-        <td>${t.reason || "—"}</td>
+        <td>${esc(t.reason) || "—"}</td>
         <td><button class="btn btn-danger-ghost btn-sm" data-del-timeoff="${t.id}">${I18n.t("common.delete")}</button></td>
       </tr>`
       )
@@ -519,8 +519,8 @@
       .map(
         (k) => `
       <tr>
-        <td>${k.name}</td>
-        <td class="mono">${k.key_prefix}…</td>
+        <td>${esc(k.name)}</td>
+        <td class="mono">${esc(k.key_prefix)}…</td>
         <td>${k.is_active ? I18n.t("common.active") : I18n.t("common.inactive")}</td>
         <td class="muted" style="font-size:0.8rem;">${k.last_used_at ? new Date(k.last_used_at).toLocaleString(I18n.lang === "ar" ? "ar-EG" : "tr-TR") : I18n.t("admin.neverUsed")}</td>
         <td>${k.is_active ? `<button class="btn btn-danger-ghost btn-sm" data-revoke-key="${k.id}">${I18n.t("admin.revokeButton")}</button>` : ""}</td>

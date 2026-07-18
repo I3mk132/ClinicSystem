@@ -37,6 +37,11 @@ class Settings(BaseSettings):
     FIRST_ADMIN_PASSWORD: str = "Admin@12345"
     FIRST_ADMIN_NAME: str = "Clinic Administrator"
 
+    # --- Seeding ---
+    # Demo departments/doctors/API key (python -m app.seed). Set to false in
+    # production so a fresh deploy starts with only the admin account.
+    SEED_DEMO_DATA: bool = True
+
     # --- Verification codes (account verification / forgot password) ---
     OTP_EXPIRE_MINUTES: int = 10
     OTP_LENGTH: int = 6
@@ -62,6 +67,16 @@ class Settings(BaseSettings):
     @property
     def cors_origins_list(self) -> List[str]:
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
+
+    def model_post_init(self, __context) -> None:
+        # Refuse to boot a production deployment signing JWTs with the
+        # publicly-known default secret - anyone could forge admin tokens.
+        insecure_defaults = {"insecure-dev-secret-change-me", "change-this-to-a-long-random-secret-key"}
+        if self.ENVIRONMENT.lower() == "production" and self.SECRET_KEY in insecure_defaults:
+            raise RuntimeError(
+                "SECRET_KEY is still the insecure default while ENVIRONMENT=production. "
+                'Generate one with: python -c "import secrets; print(secrets.token_hex(32))"'
+            )
 
 
 @lru_cache

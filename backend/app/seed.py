@@ -100,7 +100,7 @@ def seed_demo_data(db):
         db.commit()
         db.refresh(doctor)
 
-        # Sunday(6)/Tuesday(1)/Thursday(3) mornings, and Monday(0)/Wednesday(2) afternoons
+        # Sunday(6) & Tuesday(1) mornings, Thursday(3) afternoons (weekday: 0=Monday ... 6=Sunday)
         db.add_all(
             [
                 DoctorAvailability(
@@ -143,8 +143,11 @@ def main():
     db = SessionLocal()
     try:
         seed_admin(db)
-        seed_demo_data(db)
-        seed_demo_api_key(db)
+        if settings.SEED_DEMO_DATA:
+            seed_demo_data(db)
+            seed_demo_api_key(db)
+        else:
+            print("[seed] SEED_DEMO_DATA=false - skipping demo departments/doctors/API key.")
     finally:
         db.close()
 

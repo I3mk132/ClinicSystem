@@ -56,5 +56,12 @@ def delete_department(department_id: int, db: Session = Depends(get_db)):
     department = db.query(Department).filter(Department.id == department_id).first()
     if not department:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Department not found")
+    if department.doctors:
+        # Doctors (and their appointments) reference this row - deleting it would
+        # orphan them (SQLite) or blow up on the FK (PostgreSQL/MySQL).
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Department still has doctors - move or delete them first, or mark the department inactive",
+        )
     db.delete(department)
     db.commit()

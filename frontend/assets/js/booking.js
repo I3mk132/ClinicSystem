@@ -40,8 +40,8 @@
         (d) => `
       <button type="button" class="dept-card" data-id="${d.id}">
         <div class="dept-icon">${Icons.svg(d.icon)}</div>
-        <h3>${I18n.lang === "ar" ? d.name_ar : d.name_tr}</h3>
-        <p>${(I18n.lang === "ar" ? d.description_ar : d.description_tr) || ""}</p>
+        <h3>${esc(I18n.lang === "ar" ? d.name_ar : d.name_tr)}</h3>
+        <p>${esc((I18n.lang === "ar" ? d.description_ar : d.description_tr) || "")}</p>
       </button>`
       )
       .join("");
@@ -84,15 +84,15 @@
 
     grid.innerHTML = doctors
       .map((doc) => {
-        const initials = doc.full_name.split(" ").map((w) => w[0]).slice(0, 2).join("");
+        const initials = doc.full_name.split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("");
         const title = I18n.lang === "ar" ? doc.title_ar : doc.title_tr;
         const bio = I18n.lang === "ar" ? doc.bio_ar : doc.bio_tr;
         return `
         <button type="button" class="doctor-card" data-id="${doc.id}">
-          <div class="doctor-avatar" ${doc.photo_url ? `style="background-image:url('${doc.photo_url}')"` : ""}>${doc.photo_url ? "" : initials}</div>
-          <h3>${doc.full_name}</h3>
-          ${title ? `<div class="doctor-title">${title}</div>` : ""}
-          ${bio ? `<p class="bio">${bio}</p>` : ""}
+          <div class="doctor-avatar" ${doc.photo_url ? `style="background-image:url('${esc(doc.photo_url)}')"` : ""}>${doc.photo_url ? "" : esc(initials)}</div>
+          <h3>${esc(doc.full_name)}</h3>
+          ${title ? `<div class="doctor-title">${esc(title)}</div>` : ""}
+          ${bio ? `<p class="bio">${esc(bio)}</p>` : ""}
         </button>`;
       })
       .join("");

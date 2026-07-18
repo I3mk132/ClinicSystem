@@ -28,6 +28,43 @@ from app.schemas.verification import (
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
+# A code is rejected outright after this many wrong guesses (the user must
+# request a fresh one), so short numeric OTPs can't be brute-forced.
+MAX_OTP_ATTEMPTS = 5
+
+
+def _consume_code(db: Session, user: User, purpose: VerificationPurpose, plain_code: str) -> None:
+    """Validate the latest unused OTP for (user, purpose) and mark it used.
+
+    Raises 400 on any failure. Every wrong guess is counted and committed, so
+    attackers can't retry a code indefinitely within its expiry window.
+    """
+    code_entry = (
+        db.query(VerificationCode)
+        .filter(
+            VerificationCode.user_id == user.id,
+            VerificationCode.purpose == purpose,
+            VerificationCode.is_used.is_(False),
+        )
+        .order_by(VerificationCode.created_at.desc())
+        .first()
+    )
+    invalid = HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired code")
+
+    if not code_entry or code_entry.expires_at < datetime.utcnow():
+        raise invalid
+    if code_entry.attempts >= MAX_OTP_ATTEMPTS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Too many incorrect attempts - request a new code",
+        )
+    if not verify_code(plain_code, code_entry.hashed_code):
+        code_entry.attempts += 1
+        db.commit()
+        raise invalid
+
+    code_entry.is_used = True
+
 
 def _issue_code(db: Session, user: User, purpose: VerificationPurpose) -> str:
     """Create+store a new OTP for the user and send it over their chosen contact_method."""
@@ -50,14 +87,17 @@ def _issue_code(db: Session, user: User, purpose: VerificationPurpose) -> str:
 
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
 def register(payload: UserCreate, db: Session = Depends(get_db)):
-    if payload.email and db.query(User).filter(User.email == payload.email).first():
+    # Emails are stored (and looked up) lowercased so "User@x.com" and
+    # "user@x.com" can't become two different accounts.
+    email = payload.email.lower() if payload.email else None
+    if email and db.query(User).filter(User.email == email).first():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="An account with this email already exists")
     if payload.phone and db.query(User).filter(User.phone == payload.phone).first():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="An account with this phone number already exists")
 
     user = User(
         full_name=payload.full_name,
-        email=payload.email,
+        email=email,
         phone=payload.phone,
         preferred_language=payload.preferred_language,
         contact_method=payload.contact_method,
@@ -77,7 +117,7 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
-    identifier = payload.identifier.strip()
+    identifier = payload.identifier.strip().lower()  # email lookups are case-insensitive; harmless for phone numbers
     user = db.query(User).filter((User.email == identifier) | (User.phone == identifier)).first()
     if not user or not verify_password(payload.password, user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email/phone or password")
@@ -113,20 +153,7 @@ def confirm_verification_code(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    code_entry = (
-        db.query(VerificationCode)
-        .filter(
-            VerificationCode.user_id == current_user.id,
-            VerificationCode.purpose == VerificationPurpose.ACCOUNT_VERIFY,
-            VerificationCode.is_used.is_(False),
-        )
-        .order_by(VerificationCode.created_at.desc())
-        .first()
-    )
-    if not code_entry or code_entry.expires_at < datetime.utcnow() or not verify_code(payload.code, code_entry.hashed_code):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired code")
-
-    code_entry.is_used = True
+    _consume_code(db, current_user, VerificationPurpose.ACCOUNT_VERIFY, payload.code)
     current_user.is_verified = True
     db.commit()
     db.refresh(current_user)
@@ -138,7 +165,7 @@ def confirm_verification_code(
 # ---------------------------------------------------------------------------
 @router.post("/password/forgot", response_model=MessageResponse)
 def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db)):
-    identifier = payload.identifier.strip()
+    identifier = payload.identifier.strip().lower()  # email lookups are case-insensitive; harmless for phone numbers
     user = db.query(User).filter((User.email == identifier) | (User.phone == identifier)).first()
 
     # Always return the same generic message, whether or not an account was
@@ -154,25 +181,14 @@ def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db
 
 @router.post("/password/reset", response_model=MessageResponse)
 def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db)):
-    identifier = payload.identifier.strip()
+    identifier = payload.identifier.strip().lower()  # email lookups are case-insensitive; harmless for phone numbers
     user = db.query(User).filter((User.email == identifier) | (User.phone == identifier)).first()
+    # Same 400 message whether the identifier is unknown or the code is wrong,
+    # so this endpoint can't be used to probe which accounts exist.
     if not user:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid code")
-
-    code_entry = (
-        db.query(VerificationCode)
-        .filter(
-            VerificationCode.user_id == user.id,
-            VerificationCode.purpose == VerificationPurpose.PASSWORD_RESET,
-            VerificationCode.is_used.is_(False),
-        )
-        .order_by(VerificationCode.created_at.desc())
-        .first()
-    )
-    if not code_entry or code_entry.expires_at < datetime.utcnow() or not verify_code(payload.code, code_entry.hashed_code):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired code")
 
-    code_entry.is_used = True
+    _consume_code(db, user, VerificationPurpose.PASSWORD_RESET, payload.code)
     user.hashed_password = hash_password(payload.new_password)
     db.commit()
     return MessageResponse(detail="Password has been reset - you can now log in")

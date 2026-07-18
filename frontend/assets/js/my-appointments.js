@@ -22,9 +22,9 @@
       <div class="ticket" data-id="${appt.id}">
         <div class="ticket-main">
           <span class="badge badge-${appt.status}" style="margin-bottom:8px;">${I18n.statusLabel(appt.status)}</span>
-          <div class="ticket-title">${appt.doctor.full_name}</div>
-          <div class="ticket-sub">${deptName} · ${I18n.formatDate(appt.appointment_date)}</div>
-          ${appt.notes ? `<div class="ticket-sub">📝 ${appt.notes}</div>` : ""}
+          <div class="ticket-title">${esc(appt.doctor.full_name)}</div>
+          <div class="ticket-sub">${esc(deptName)} · ${I18n.formatDate(appt.appointment_date)}</div>
+          ${appt.notes ? `<div class="ticket-sub">📝 ${esc(appt.notes)}</div>` : ""}
           ${canCancel ? `<div class="ticket-actions"><button class="btn btn-danger-ghost btn-sm" data-cancel="${appt.id}" data-i18n="myAppointments.cancelButton"></button></div>` : ""}
         </div>
         <div class="ticket-stub">

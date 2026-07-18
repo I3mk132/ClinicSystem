@@ -72,7 +72,13 @@ def available_slots(doctor_id: int, target_date: date_type = Query(..., alias="d
 # ---------------------------------------------------------------------------
 @router.post("/appointments", response_model=PublicAppointmentOut, status_code=status.HTTP_201_CREATED)
 def create_public_appointment(payload: PublicAppointmentCreate, db: Session = Depends(get_db)):
-    doctor = db.query(Doctor).filter(Doctor.id == payload.doctor_id, Doctor.is_active.is_(True)).first()
+    # Row lock -> no double booking under concurrency (see routers/appointments.py).
+    doctor = (
+        db.query(Doctor)
+        .filter(Doctor.id == payload.doctor_id, Doctor.is_active.is_(True))
+        .with_for_update()
+        .first()
+    )
     if not doctor:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Doctor not found")
     if doctor.department_id != payload.department_id:
@@ -102,8 +108,9 @@ def create_public_appointment(payload: PublicAppointmentCreate, db: Session = De
             is_verified=True,  # trusted: the bot/integration already identified this person
         )
         db.add(patient)
-        db.commit()
-        db.refresh(patient)
+        # flush (not commit) so the patient gets an id while keeping the doctor
+        # row lock held until the appointment below is committed atomically.
+        db.flush()
 
     appointment = Appointment(
         patient_id=patient.id,

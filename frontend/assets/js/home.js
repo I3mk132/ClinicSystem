@@ -35,8 +35,8 @@
         (d) => `
       <a class="dept-card" href="booking.html?department=${d.id}">
         <div class="dept-icon">${Icons.svg(d.icon)}</div>
-        <h3>${I18n.lang === "ar" ? d.name_ar : d.name_tr}</h3>
-        <p>${(I18n.lang === "ar" ? d.description_ar : d.description_tr) || ""}</p>
+        <h3>${esc(I18n.lang === "ar" ? d.name_ar : d.name_tr)}</h3>
+        <p>${esc((I18n.lang === "ar" ? d.description_ar : d.description_tr) || "")}</p>
       </a>`
       )
       .join("");

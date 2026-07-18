@@ -28,9 +28,12 @@ class Slot:
     is_available: bool
 
 
-def _add_minutes(t: time, minutes: int) -> time:
-    dummy = datetime.combine(date_type.today(), t) + timedelta(minutes=minutes)
-    return dummy.time()
+_ANCHOR = date_type(2000, 1, 1)  # arbitrary fixed date used for time arithmetic
+
+
+def _add_minutes(t: time, minutes: int) -> datetime:
+    """Returns a datetime (anchored to a dummy date) so passing midnight is detectable."""
+    return datetime.combine(_ANCHOR, t) + timedelta(minutes=minutes)
 
 
 def get_slots_for_doctor_on_date(db: Session, doctor_id: int, target_date: date_type) -> List[Slot]:
@@ -70,11 +73,16 @@ def get_slots_for_doctor_on_date(db: Session, doctor_id: int, target_date: date_
 
     slots: List[Slot] = []
     for template in templates:
+        # Guard against bad data: non-positive duration would loop forever.
+        if template.slot_duration_minutes <= 0:
+            continue
         cursor = template.start_time
         while True:
-            slot_end = _add_minutes(cursor, template.slot_duration_minutes)
-            if slot_end > template.end_time:
+            slot_end_dt = _add_minutes(cursor, template.slot_duration_minutes)
+            # Crossed midnight (date advanced past the anchor) or past the window end -> stop.
+            if slot_end_dt.date() != _ANCHOR or slot_end_dt.time() > template.end_time:
                 break
+            slot_end = slot_end_dt.time()
 
             is_available = True
             if is_day_off:

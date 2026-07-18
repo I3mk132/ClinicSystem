@@ -170,3 +170,58 @@ public API immediately.
 
 Full interactive documentation for every endpoint (including these) is
 always at **`/docs`**.
+
+## Deploying with Docker (VPS + Portainer)
+
+The backend ships with a production-ready `Dockerfile` + `docker-compose.yml`.
+The container starts, seeds the database (tables + admin account, idempotent),
+then serves the API on port `8000`. The SQLite database lives on a named
+volume (`clinic_data`), so it survives container rebuilds/updates.
+
+### Option A — Portainer stack from the Git repository (recommended)
+
+1. Portainer → **Stacks** → **Add stack** → **Repository**
+2. Repository URL: `https://github.com/I3mk132/ClinicSystem`
+   Compose path: `backend/docker-compose.yml`
+3. Add the **environment variables** (at minimum):
+
+   | Variable | Value |
+   |---|---|
+   | `SECRET_KEY` | output of `python -c "import secrets; print(secrets.token_hex(32))"` |
+   | `FIRST_ADMIN_PASSWORD` | a strong admin password |
+   | `FIRST_ADMIN_EMAIL` | your admin email |
+   | `CORS_ORIGINS` | where the frontend is served, e.g. `https://clinic.example.com` |
+   | `TZ` | clinic timezone, e.g. `Europe/Istanbul` |
+
+4. **Deploy the stack.** API is now on `http://<vps-ip>:8000` (docs at `/docs`).
+
+### Option B — Upload the folder and use the shell
+
+```bash
+# on the VPS, inside the uploaded backend/ folder:
+SECRET_KEY=... FIRST_ADMIN_PASSWORD=... docker compose up -d --build
+```
+(or put those variables in a `.env` file next to `docker-compose.yml` —
+Docker Compose reads it automatically for `${...}` substitution.)
+
+### After deploying
+
+- **Point the frontend at the API**: set `API_BASE_URL` in
+  `frontend/assets/js/config.js` to `https://<your-api-domain>/api/v1`.
+- **HTTPS**: put a reverse proxy (Nginx Proxy Manager, Traefik, Caddy) in
+  front of port 8000. The container already runs uvicorn with
+  `--proxy-headers`, so client IPs/scheme are preserved.
+- **CORS**: `CORS_ORIGINS` must exactly match the frontend origin
+  (scheme + domain, no trailing slash) or browsers will block API calls.
+- **OTP codes**: with the default `EMAIL_PROVIDER=console`, verification
+  codes are printed to the container logs (Portainer → container → **Logs**).
+  Switch to real SMTP by setting `EMAIL_PROVIDER=smtp` + the `SMTP_*` vars.
+- **Safety rails**: with `ENVIRONMENT=production` (the compose default) the
+  app refuses to boot with the default `SECRET_KEY`, and demo data seeding
+  is disabled (`SEED_DEMO_DATA=false`), so a fresh deploy starts clean.
+- **Upgrades**: redeploy the stack (or `docker compose up -d --build`);
+  the `clinic_data` volume keeps the database.
+- **Backups**: the whole database is one file — copy it out with
+  `docker cp clinic-api:/data/clinic.db ./clinic-backup-$(date +%F).db`.
+- **PostgreSQL later**: uncomment the `clinic-db` service + Postgres
+  `DATABASE_URL` in `docker-compose.yml`. No code changes required.

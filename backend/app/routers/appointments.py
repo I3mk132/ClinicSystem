@@ -30,7 +30,15 @@ def create_appointment(
     db: Session = Depends(get_db),
 ):
     """A logged-in patient books an appointment. This is the core booking action."""
-    doctor = db.query(Doctor).filter(Doctor.id == payload.doctor_id, Doctor.is_active.is_(True)).first()
+    # with_for_update() locks the doctor row until commit, serializing concurrent
+    # bookings for the same doctor so two requests can't take the same slot
+    # (real row lock on PostgreSQL/MySQL; harmless no-op on SQLite).
+    doctor = (
+        db.query(Doctor)
+        .filter(Doctor.id == payload.doctor_id, Doctor.is_active.is_(True))
+        .with_for_update()
+        .first()
+    )
     if not doctor:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Doctor not found")
     if doctor.department_id != payload.department_id:

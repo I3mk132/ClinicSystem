@@ -67,5 +67,12 @@ def delete_doctor(doctor_id: int, db: Session = Depends(get_db)):
     doctor = db.query(Doctor).filter(Doctor.id == doctor_id).first()
     if not doctor:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Doctor not found")
+    if doctor.appointments:
+        # Appointments keep a FK to the doctor (patients' booking history).
+        # Deleting would orphan/violate - deactivate instead to hide the doctor.
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Doctor has appointments - mark them inactive instead of deleting",
+        )
     db.delete(doctor)
     db.commit()

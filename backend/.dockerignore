@@ -1,0 +1,21 @@
+# Secrets must come from environment variables, never be baked into the image
+.env
+.demo_api_key.txt
+
+# Local dev artifacts
+.venv
+venv
+__pycache__
+*.pyc
+*.pyo
+*.db
+clinic.db
+.pytest_cache
+.mypy_cache
+.ruff_cache
+
+# Not needed inside the image
+README.md
+.git
+.gitignore
+docker-compose.yml

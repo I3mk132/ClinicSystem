@@ -18,7 +18,18 @@ def update_my_profile(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    updates = payload.model_dump(exclude_unset=True)
+
+    new_phone = updates.get("phone")
+    if new_phone:
+        taken = db.query(User).filter(User.phone == new_phone, User.id != current_user.id).first()
+        if taken:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="An account with this phone number already exists",
+            )
+
+    for field, value in updates.items():
         setattr(current_user, field, value)
     db.commit()
     db.refresh(current_user)

@@ -11,6 +11,18 @@ class ApiError extends Error {
   }
 }
 
+/**
+ * Escape a value for safe interpolation into innerHTML templates.
+ * MUST be applied to every API-driven string (names, notes, bios, ...) -
+ * otherwise a patient registering as `<img onerror=...>` becomes stored XSS
+ * that runs in the admin panel.
+ */
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (c) => (
+    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+  ));
+}
+
 const Api = {
   baseUrl: window.CLINIC_CONFIG.API_BASE_URL,
 
@@ -62,7 +74,15 @@ const Api = {
 
     if (!response.ok) {
       const detail = payload?.detail;
-      const message = typeof detail === "string" ? detail : response.statusText;
+      let message;
+      if (typeof detail === "string") {
+        message = detail;
+      } else if (Array.isArray(detail)) {
+        // FastAPI validation errors (422) come as [{loc, msg, type}, ...]
+        message = detail.map((d) => d.msg || "").filter(Boolean).join(" · ");
+      }
+      // statusText is often empty over HTTP/2 - always have a fallback.
+      if (!message) message = response.statusText || `HTTP ${response.status}`;
       throw new ApiError(message, response.status, detail);
     }
 

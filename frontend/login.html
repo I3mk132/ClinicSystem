@@ -75,7 +75,10 @@
       });
       Auth.setSession(data.access_token, data.user);
       const params = new URLSearchParams(window.location.search);
-      window.location.href = params.get("next") || "index.html";
+      // Only allow same-site page names (e.g. "booking.html") - anything with
+      // a scheme/host/path would let ?next= redirect users to a phishing site.
+      const next = params.get("next") || "";
+      window.location.href = /^[\w-]+\.html$/.test(next) ? next : "index.html";
     } catch (err) {
       errorBox.textContent = err.message;
       errorBox.classList.add("visible");
