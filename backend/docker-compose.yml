@@ -33,11 +33,12 @@ services:
       SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in the stack environment}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-1440}
 
-      # Using PostgreSQL (clinic-db service below). To go back to the simpler
-      # zero-setup SQLite instead, comment the line below and uncomment the
-      # sqlite one - no code changes needed either way.
-      # DATABASE_URL: sqlite:////data/clinic.db
-      DATABASE_URL: postgresql+psycopg2://clinic:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the stack environment}@clinic-db:5432/clinic
+      # Managed Postgres on Neon. Paste the Neon connection string into the
+      # DATABASE_URL stack variable, but change the scheme to the SQLAlchemy
+      # form and keep SSL:
+      #   postgresql+psycopg2://USER:PASSWORD@ep-xxx-pooler.REGION.aws.neon.tech/DBNAME?sslmode=require
+      # Use Neon's *pooled* host (the one with "-pooler") for a web app.
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL to your Neon connection string}
 
       # Comma-separated list of origins allowed to call the API - set this to
       # wherever the frontend is served from (scheme + host, no trailing slash).
@@ -72,30 +73,7 @@ services:
       TWILIO_FROM_NUMBER: ${TWILIO_FROM_NUMBER:-}
     volumes:
       - clinic_data:/data
-    depends_on:
-      clinic-db:
-        # Wait until Postgres is actually accepting connections (not just
-        # started) before booting the API, so the first-run seed doesn't fail.
-        condition: service_healthy
-
-  # --- PostgreSQL -----------------------------------------------------------
-  clinic-db:
-    image: postgres:16-alpine
-    container_name: clinic-db
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: clinic
-      POSTGRES_USER: clinic
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the stack environment}
-    volumes:
-      - clinic_pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U clinic -d clinic"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    # Not published to the host - only the API container reaches it over the
-    # internal compose network. Nothing to expose publicly.
+    # DB is Neon (managed, external) - no local db service to wait on.
 
   # --- Cloudflare Tunnel: exposes the API at https://api.dijivoo.com --------
   # No inbound ports opened on the VPS - cloudflared dials OUT to Cloudflare.
@@ -114,4 +92,3 @@ services:
 
 volumes:
   clinic_data:
-  clinic_pgdata:
