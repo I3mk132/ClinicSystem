@@ -50,7 +50,7 @@ services:
       FIRST_ADMIN_NAME: ${FIRST_ADMIN_NAME:-Clinic Administrator}
 
       # Fresh production DB starts empty (no demo doctors/departments)
-      SEED_DEMO_DATA: "false"
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-false}
 
       # Clinic's local timezone - slot availability ("today", "past times")
       # is computed in this zone. e.g. Europe/Istanbul, Asia/Riyadh, Asia/Damascus
