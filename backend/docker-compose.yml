@@ -75,20 +75,15 @@ services:
       - clinic_data:/data
     # DB is Neon (managed, external) - no local db service to wait on.
 
-  # --- Cloudflare Tunnel: exposes the API at https://api.dijivoo.com --------
-  # No inbound ports opened on the VPS - cloudflared dials OUT to Cloudflare.
-  # In the Cloudflare Zero Trust dashboard, set the tunnel's Public Hostname:
-  #   Subdomain: api   Domain: dijivoo.com   Service: http://clinic-api:8000
-  # Then put the tunnel token in the TUNNEL_TOKEN stack variable.
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    container_name: clinic-tunnel
-    restart: unless-stopped
-    command: tunnel --no-autoupdate run
-    environment:
-      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?Set TUNNEL_TOKEN in the stack environment}
-    depends_on:
-      - clinic-api
+    networks:
+      - default
+      - edge
+
+  
 
 volumes:
   clinic_data:
+
+networks:
+  edge:
+    external: true
