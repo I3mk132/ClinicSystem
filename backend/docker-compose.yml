@@ -75,15 +75,9 @@ services:
       - clinic_data:/data
     # DB is Neon (managed, external) - no local db service to wait on.
 
-    networks:
-      - default
-      - edge
 
   
 
 volumes:
   clinic_data:
 
-networks:
-  edge:
-    external: true
