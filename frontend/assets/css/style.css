@@ -439,12 +439,6 @@ input.invalid { border-color: var(--color-danger); }
 .segmented input { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; }
 .segmented input:checked + label { background: var(--color-primary); color: #fff; }
 
-.verify-banner {
-  background: var(--color-accent-light); border-bottom: 1px solid var(--color-accent); padding: 10px 24px;
-  text-align: center; font-size: 0.85rem; font-weight: 600; color: var(--color-accent-dark);
-}
-.verify-banner a { color: var(--color-primary-dark); text-decoration: underline; font-weight: 700; }
-
 /* Respect reduced motion everywhere */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }

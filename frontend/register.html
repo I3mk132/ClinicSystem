@@ -118,7 +118,10 @@
         preferred_language: I18n.lang,
       });
       Auth.setSession(data.access_token, data.user);
-      window.location.href = "verify.html";
+      // Same ?next= rule as login.html: only bare same-site .html names,
+      // so the parameter can't redirect to another origin.
+      const next = new URLSearchParams(window.location.search).get("next") || "";
+      window.location.href = /^[\w-]+\.html$/.test(next) ? next : "index.html";
     } catch (err) {
       errorBox.textContent = err.message;
       errorBox.classList.add("visible");

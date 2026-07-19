@@ -7,19 +7,8 @@
  */
 const Layout = {
   mount(activePage) {
-    this._mountBanner();
     this._mountNavbar(activePage);
     this._mountFooter();
-  },
-
-  _mountBanner() {
-    const user = Auth.getUser();
-    if (!Auth.isLoggedIn() || !user || user.is_verified) return;
-    const banner = document.createElement("div");
-    banner.className = "verify-banner";
-    banner.innerHTML = `<span data-i18n="verify.bannerText"></span> <a href="verify.html" data-i18n="verify.bannerLink"></a>`;
-    document.body.insertBefore(banner, document.body.firstChild);
-    I18n.translateDom(banner);
   },
 
   _mountNavbar(activePage) {

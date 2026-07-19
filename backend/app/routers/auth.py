@@ -23,7 +23,6 @@ from app.schemas.verification import (
     ForgotPasswordRequest,
     MessageResponse,
     ResetPasswordRequest,
-    VerifyConfirmRequest,
 )
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -103,13 +102,13 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
         contact_method=payload.contact_method,
         hashed_password=hash_password(payload.password),
         role=UserRole.PATIENT,
-        is_verified=False,
+        # Accounts are active immediately - no signup OTP. Verification codes
+        # are only used for the forgot/reset-password flow now.
+        is_verified=True,
     )
     db.add(user)
     db.commit()
     db.refresh(user)
-
-    _issue_code(db, user, VerificationPurpose.ACCOUNT_VERIFY)
 
     token = create_access_token(subject=str(user.id), extra_claims={"role": user.role.value})
     return Token(access_token=token, user=UserOut.model_validate(user))
@@ -130,33 +129,6 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
 
 @router.get("/me", response_model=UserOut)
 def read_current_user(current_user: User = Depends(get_current_user)):
-    return current_user
-
-
-# ---------------------------------------------------------------------------
-# Account verification (email or phone, based on the user's contact_method)
-# ---------------------------------------------------------------------------
-@router.post("/verify/request", response_model=MessageResponse)
-def request_verification_code(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    if current_user.is_verified:
-        return MessageResponse(detail="Account is already verified")
-    _issue_code(db, current_user, VerificationPurpose.ACCOUNT_VERIFY)
-    return MessageResponse(detail="Verification code sent")
-
-
-@router.post("/verify/confirm", response_model=UserOut)
-def confirm_verification_code(
-    payload: VerifyConfirmRequest,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    _consume_code(db, current_user, VerificationPurpose.ACCOUNT_VERIFY, payload.code)
-    current_user.is_verified = True
-    db.commit()
-    db.refresh(current_user)
     return current_user
 
 

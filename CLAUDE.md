@@ -24,7 +24,7 @@ uvicorn app.main:app --reload        # http://127.0.0.1:8000  (docs at /docs)
 
 **Frontend** (from `frontend/`): any static server, e.g. `python3 -m http.server 5500`. The backend's `CORS_ORIGINS` must list the exact origin serving the frontend.
 
-**Docker** (from `backend/`): `docker compose up -d --build`. Compose runs Postgres + API + a Cloudflare Tunnel; requires `SECRET_KEY`, `POSTGRES_PASSWORD`, `FIRST_ADMIN_PASSWORD`, `TUNNEL_TOKEN` as stack env vars.
+**Docker** (from `backend/`): `docker compose up -d --build`. Two services only: `clinic-api` + `cloudflared` — the DB is **external managed Postgres (Neon)**, there is no db container. Required stack env vars: `SECRET_KEY`, `DATABASE_URL` (Neon string rewritten to SQLAlchemy form `postgresql+psycopg2://…?sslmode=require`, using the pooled `-pooler` host), `FIRST_ADMIN_PASSWORD`, `TUNNEL_TOKEN`. The entrypoint runs `python -m app.seed` on every container start (idempotent). `SEED_DEMO_DATA` defaults to `false` in compose (fresh prod DB starts empty) and can be overridden from the stack environment.
 
 **Tests:** none in the repo. Verify behavior by driving the API (`/docs`, or curl against a running instance / container).
 
@@ -36,7 +36,7 @@ uvicorn app.main:app --reload        # http://127.0.0.1:8000  (docs at /docs)
 - **Two auth models, both in `app/dependencies.py`:**
   - JWT Bearer (`get_current_user` / `get_current_admin`) for the web portal. The role is always re-read from the DB row — the token's role claim is never trusted for authorization. `weekday` convention is Python's `Monday=0 … Sunday=6`.
   - API keys (`get_api_key`, `X-API-Key` header) for `/api/v1/public/*` — server-to-server bot/HIS integrations that book by phone number with no login. Keys are stored SHA-256-hashed; the raw key is shown once at creation.
-- **OTP flow** (`app/routers/auth.py`): one `VerificationCode` table serves both account-verify and password-reset. Codes are bcrypt-hashed, expire, and are capped at `MAX_OTP_ATTEMPTS` wrong guesses via the shared `_consume_code` helper. Delivery is pluggable (`app/notifications.py`): `console` (logs the code — the zero-setup default) vs `smtp`/`twilio`, selected purely by env.
+- **OTP flow** (`app/routers/auth.py`): password-reset ONLY — there is no signup verification. Registration creates the account immediately active (`is_verified=True`) and returns a JWT; there are no `/auth/verify/*` endpoints and no `verify.html` page. `VerificationCode` codes are bcrypt-hashed, expire, and are capped at `MAX_OTP_ATTEMPTS` wrong guesses via the shared `_consume_code` helper. `VerificationPurpose.ACCOUNT_VERIFY` still exists in the enum only so old DB rows deserialize — never issue it. Delivery is pluggable (`app/notifications.py`): `console` (logs the code — the zero-setup default) vs `smtp`/`twilio`, selected purely by env.
 - **Concurrency:** booking endpoints lock the doctor row with `with_for_update()` to serialize concurrent bookings (real lock on Postgres/MySQL, no-op on SQLite). In `public.py`, patient find-or-create uses `flush()` not `commit()` so the lock is held until the appointment commits atomically.
 - **One concern per file** under `models/`, `schemas/`, `routers/`. Emails are normalized to lowercase on register and on every lookup. Deleting a department with doctors, or a doctor with appointments, is rejected (409) to avoid FK orphans — deactivate (`is_active=False`) instead.
 
@@ -52,6 +52,11 @@ uvicorn app.main:app --reload        # http://127.0.0.1:8000  (docs at /docs)
 ## Deployment notes
 
 - Frontend is hosted on **Cloudflare Pages** (build output dir = `frontend`, no build command).
-- Backend runs on a **VPS via Portainer** (stack from this repo, compose path `backend/docker-compose.yml`), exposed over HTTPS through a **Cloudflare Tunnel** (`cloudflared` service → `clinic-api:8000`). Because frontend is HTTPS, the API must be HTTPS too (mixed-content otherwise).
+- Backend runs on a **VPS via Portainer** (stack from this repo, compose path `backend/docker-compose.yml`), exposed over HTTPS through a **Cloudflare Tunnel** (`cloudflared` service → `clinic-api:8000`; host port mapping `8001:8000` is only for direct VPS access). Because frontend is HTTPS, the API must be HTTPS too (mixed-content otherwise).
+- Current production hostnames: API at `https://clinic-api.dijivoo.com` (what `config.js` points to), frontend at `https://clinic.dijivoo.com` (allowed in `CORS_ORIGINS`). Data lives in **Neon** (managed Postgres), not on the VPS.
 - After changing where either half is hosted: update `API_BASE_URL` in `config.js` AND `CORS_ORIGINS` (exact origin, no trailing slash) on the backend — a mismatch silently blocks every API call in the browser.
 - `git push` uses HTTPS (SSH may be blocked on some networks); auth needs a GitHub PAT.
+
+## Planned direction
+
+`docs/session-prompts.md` is a six-session implementation roadmap (OTP-removal, multi-tenant SaaS core with Alembic, per-clinic theming, R2 media library, standalone bot service, chat widget). It describes **intended** architecture, not current state — each session is expected to update this file as it lands.

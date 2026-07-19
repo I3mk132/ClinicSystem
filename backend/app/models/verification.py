@@ -9,6 +9,8 @@ from app.models.user import ContactMethod
 
 
 class VerificationPurpose(str, enum.Enum):
+    # ACCOUNT_VERIFY is no longer issued (signup OTP was removed) but stays
+    # declared so existing rows in older databases still deserialize.
     ACCOUNT_VERIFY = "account_verify"
     PASSWORD_RESET = "password_reset"
 

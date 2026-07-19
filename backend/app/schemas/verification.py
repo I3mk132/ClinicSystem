@@ -5,10 +5,6 @@ class MessageResponse(BaseModel):
     detail: str
 
 
-class VerifyConfirmRequest(BaseModel):
-    code: str = Field(min_length=4, max_length=10)
-
-
 class ForgotPasswordRequest(BaseModel):
     """`identifier` may be an email address or a phone number - whichever the person signed up with."""
 

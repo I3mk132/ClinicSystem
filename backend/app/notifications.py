@@ -91,15 +91,13 @@ def send_sms(to: str, body: str) -> None:
 def send_otp(channel: str, destination: str, code: str, purpose: str, lang: str = "ar") -> None:
     """
     channel: "email" or "phone"
-    purpose: "account_verify" or "password_reset"
+    purpose: "password_reset" (the only OTP flow left - signup OTP was removed)
     """
     texts = {
         "ar": {
-            "account_verify": ("رمز تفعيل حسابك", f"رمز تفعيل حسابك هو: {code}\nصالح لمدة {settings.OTP_EXPIRE_MINUTES} دقائق."),
             "password_reset": ("رمز إعادة تعيين كلمة المرور", f"رمز إعادة تعيين كلمة المرور هو: {code}\nصالح لمدة {settings.OTP_EXPIRE_MINUTES} دقائق. إذا لم تطلب هذا، تجاهل الرسالة."),
         },
         "tr": {
-            "account_verify": ("Hesap Doğrulama Kodu", f"Hesap doğrulama kodunuz: {code}\n{settings.OTP_EXPIRE_MINUTES} dakika geçerlidir."),
             "password_reset": ("Şifre Sıfırlama Kodu", f"Şifre sıfırlama kodunuz: {code}\n{settings.OTP_EXPIRE_MINUTES} dakika geçerlidir. Bu talebi siz yapmadıysanız bu mesajı yok sayın."),
         },
     }

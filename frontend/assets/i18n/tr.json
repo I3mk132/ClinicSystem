@@ -198,17 +198,6 @@
     "resendCode": "Kod gelmedi mi? Tekrar gönder",
     "goToLogin": "Girişe Git"
   },
-  "verify": {
-    "title": "Hesabı Doğrula",
-    "subtitle": "Hesabınızı onaylamak için size gönderilen doğrulama kodunu girin.",
-    "confirmButton": "Hesabı Doğrula",
-    "resendButton": "Kodu Tekrar Gönder",
-    "resentMessage": "Yeni bir kod gönderildi",
-    "successMessage": "Hesabınız başarıyla doğrulandı!",
-    "bannerText": "Hesabınız henüz doğrulanmadı.",
-    "bannerLink": "Şimdi doğrula",
-    "alreadyVerified": "Hesabınız zaten doğrulanmış."
-  },
   "days": {
     "0": "Pazartesi",
     "1": "Salı",

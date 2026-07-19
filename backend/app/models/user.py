@@ -43,7 +43,9 @@ class User(Base):
     preferred_language: Mapped[str] = mapped_column(String(5), default="ar")
 
     contact_method: Mapped[ContactMethod] = mapped_column(Enum(ContactMethod), default=ContactMethod.EMAIL)
-    is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Signup OTP was removed - accounts are active immediately, so this is
+    # always True for new rows. Kept as a column because existing DBs have it.
+    is_verified: Mapped[bool] = mapped_column(Boolean, default=True)
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
