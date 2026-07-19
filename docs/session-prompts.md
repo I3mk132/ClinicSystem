@@ -42,6 +42,17 @@ Update CLAUDE.md's OTP section when done.
 
 ## Session 2 — Multi-tenant core (foundation, everything depends on this)
 
+> **Split into 2a / 2b (see the split note at the bottom).**
+> **2a ✅ DONE (2026-07-19):** `Clinic` model (slug + custom_domain), nullable
+> `clinic_id` FK on all 8 tenant tables, Alembic introduced (`0001` baseline +
+> `0002` tenancy, `create_all()` still builds fresh dev DBs), `get_current_clinic`
+> (X-Clinic slug + host/Origin→custom_domain fallback) and `get_api_key_clinic`
+> resolution deps, and a tenant-scoped seed (demo clinic, slug `demo`).
+> **2b ▶ NEXT:** cross-tenant query-isolation audit of every router + `services.py`,
+> flip `clinic_id` to NOT NULL with per-tenant uniqueness (email/phone/dept name),
+> superadmin role + `/api/v1/superadmin/*`, and frontend `CLINIC_SLUG` +
+> `X-Clinic` header. **Data is NOT isolated until 2b lands.**
+
 ```
 Read CLAUDE.md first.
 

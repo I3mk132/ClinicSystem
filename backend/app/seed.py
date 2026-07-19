@@ -14,18 +14,38 @@ from app.core.config import settings
 from app.core.database import Base, SessionLocal, engine
 from app.core.security import generate_api_key, hash_password
 from app.models.api_key import ApiKey
+from app.models.clinic import Clinic
 from app.models.department import Department
 from app.models.doctor import Doctor
 from app.models.schedule import DoctorAvailability
 from app.models.user import User, UserRole
 
+# Slug of the tenant everything seeded here belongs to. The frontend's
+# CLINIC_SLUG (added in Session 2b) must match this to talk to the demo data.
+DEMO_CLINIC_SLUG = "demo"
 
-def seed_admin(db):
+
+def seed_clinic(db) -> Clinic:
+    """Get-or-create the demo tenant that owns every seeded row."""
+    clinic = db.query(Clinic).filter(Clinic.slug == DEMO_CLINIC_SLUG).first()
+    if clinic:
+        print(f"[seed] Clinic '{DEMO_CLINIC_SLUG}' already exists - skipping.")
+        return clinic
+    clinic = Clinic(slug=DEMO_CLINIC_SLUG, name="Demo Clinic", is_active=True)
+    db.add(clinic)
+    db.commit()
+    db.refresh(clinic)
+    print(f"[seed] Created clinic (tenant) -> slug='{DEMO_CLINIC_SLUG}' id={clinic.id}")
+    return clinic
+
+
+def seed_admin(db, clinic: Clinic):
     existing = db.query(User).filter(User.email == settings.FIRST_ADMIN_EMAIL).first()
     if existing:
         print(f"[seed] Admin '{settings.FIRST_ADMIN_EMAIL}' already exists - skipping.")
         return
     admin = User(
+        clinic_id=clinic.id,
         full_name=settings.FIRST_ADMIN_NAME,
         email=settings.FIRST_ADMIN_EMAIL,
         hashed_password=hash_password(settings.FIRST_ADMIN_PASSWORD),
@@ -38,7 +58,7 @@ def seed_admin(db):
     print(f"[seed] Created admin account -> {settings.FIRST_ADMIN_EMAIL} / {settings.FIRST_ADMIN_PASSWORD}")
 
 
-def seed_demo_data(db):
+def seed_demo_data(db, clinic: Clinic):
     if db.query(Department).count() > 0:
         print("[seed] Departments already exist - skipping demo data.")
         return
@@ -71,7 +91,7 @@ def seed_demo_data(db):
     ]
     departments = []
     for data in departments_data:
-        dept = Department(**data)
+        dept = Department(clinic_id=clinic.id, **data)
         db.add(dept)
         departments.append(dept)
     db.commit()
@@ -95,7 +115,7 @@ def seed_demo_data(db):
 
     for data in doctors_data:
         department = data.pop("department")
-        doctor = Doctor(department_id=department.id, **data)
+        doctor = Doctor(clinic_id=clinic.id, department_id=department.id, **data)
         db.add(doctor)
         db.commit()
         db.refresh(doctor)
@@ -104,16 +124,16 @@ def seed_demo_data(db):
         db.add_all(
             [
                 DoctorAvailability(
-                    doctor_id=doctor.id, weekday=6, start_time=time(9, 0), end_time=time(13, 0),
-                    slot_duration_minutes=30,
+                    clinic_id=clinic.id, doctor_id=doctor.id, weekday=6, start_time=time(9, 0),
+                    end_time=time(13, 0), slot_duration_minutes=30,
                 ),
                 DoctorAvailability(
-                    doctor_id=doctor.id, weekday=1, start_time=time(9, 0), end_time=time(13, 0),
-                    slot_duration_minutes=30,
+                    clinic_id=clinic.id, doctor_id=doctor.id, weekday=1, start_time=time(9, 0),
+                    end_time=time(13, 0), slot_duration_minutes=30,
                 ),
                 DoctorAvailability(
-                    doctor_id=doctor.id, weekday=3, start_time=time(14, 0), end_time=time(18, 0),
-                    slot_duration_minutes=20,
+                    clinic_id=clinic.id, doctor_id=doctor.id, weekday=3, start_time=time(14, 0),
+                    end_time=time(18, 0), slot_duration_minutes=20,
                 ),
             ]
         )
@@ -121,12 +141,12 @@ def seed_demo_data(db):
     print(f"[seed] Created {len(departments)} departments and {len(doctors_data)} doctors with weekly schedules.")
 
 
-def seed_demo_api_key(db):
+def seed_demo_api_key(db, clinic: Clinic):
     if db.query(ApiKey).count() > 0:
         print("[seed] An API key already exists - skipping demo key.")
         return
     raw_key, hashed, prefix = generate_api_key()
-    db.add(ApiKey(name="Demo Integration Key", hashed_key=hashed, key_prefix=prefix))
+    db.add(ApiKey(clinic_id=clinic.id, name="Demo Integration Key", hashed_key=hashed, key_prefix=prefix))
     db.commit()
     print(f"[seed] Created a demo API key for bot/system integrations -> {raw_key}")
     print("[seed] (Shown once - save it now. Manage/revoke keys from Admin > Integrations, or create new ones there.)")
@@ -142,10 +162,11 @@ def main():
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     try:
-        seed_admin(db)
+        clinic = seed_clinic(db)
+        seed_admin(db, clinic)
         if settings.SEED_DEMO_DATA:
-            seed_demo_data(db)
-            seed_demo_api_key(db)
+            seed_demo_data(db, clinic)
+            seed_demo_api_key(db, clinic)
         else:
             print("[seed] SEED_DEMO_DATA=false - skipping demo departments/doctors/API key.")
     finally:

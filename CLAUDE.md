@@ -26,12 +26,29 @@ uvicorn app.main:app --reload        # http://127.0.0.1:8000  (docs at /docs)
 
 **Docker** (from `backend/`): `docker compose up -d --build`. Two services only: `clinic-api` + `cloudflared` — the DB is **external managed Postgres (Neon)**, there is no db container. Required stack env vars: `SECRET_KEY`, `DATABASE_URL` (Neon string rewritten to SQLAlchemy form `postgresql+psycopg2://…?sslmode=require`, using the pooled `-pooler` host), `FIRST_ADMIN_PASSWORD`, `TUNNEL_TOKEN`. The entrypoint runs `python -m app.seed` on every container start (idempotent). `SEED_DEMO_DATA` defaults to `false` in compose (fresh prod DB starts empty) and can be overridden from the stack environment.
 
+**Migrations** (Alembic, from `backend/` with the venv active — URL comes from `DATABASE_URL`, no `-x` needed):
+
+```bash
+alembic upgrade head                 # apply pending migrations to the DB
+alembic revision --autogenerate -m "…"  # after a model change, generate a migration
+alembic downgrade -1                  # roll back one
+```
+
+On an **existing prod DB** whose pre-tenancy tables were built by `create_all()` (e.g. Neon), stamp the baseline as already-applied first, then upgrade — this applies only the tenancy migration, it does NOT recreate tables:
+
+```bash
+alembic stamp 0001 && alembic upgrade head
+```
+
+Fresh dev SQLite needs no Alembic — `create_all()` on boot/seed builds the full current schema (incl. `clinic_id`). SQLite ALTERs run in Alembic batch mode (`render_as_batch`, set in `env.py`).
+
 **Tests:** none in the repo. Verify behavior by driving the API (`/docs`, or curl against a running instance / container).
 
 ## Backend architecture
 
 - **Config is centralized.** `app/core/config.py` is the ONLY module that reads env vars — everything imports the cached `settings` object. Swapping `DATABASE_URL` moves SQLite→Postgres with zero code changes (`app/core/database.py` sets SQLite-only connect args conditionally). In `ENVIRONMENT=production`, `settings` refuses to boot with the default `SECRET_KEY` (`model_post_init`).
-- **Schema creation, not migrations.** Tables are created via `Base.metadata.create_all()` in the `lifespan` handler (`app/main.py`) and in `app/seed.py`. There is no Alembic — a model change to an existing table won't apply to an existing DB. New model files MUST be imported in `app/models/__init__.py` or they won't register on `Base.metadata`.
+- **Schema: `create_all()` for fresh DBs, Alembic for existing ones.** Fresh databases are still built by `Base.metadata.create_all()` (in `app/main.py` lifespan and `app/seed.py`) — that path always reflects the current models, including `clinic_id`. But `create_all()` never ALTERs an existing table, so schema changes to a live DB (e.g. Neon prod) go through **Alembic** (`backend/alembic/`, config in `alembic.ini`, URL pulled from `settings.DATABASE_URL` by `alembic/env.py`). Migration chain: `0001` = pre-tenancy baseline (a stamp target for DBs that already have those tables), `0002` = adds `clinics` + `clinic_id`. New model files MUST be imported in `app/models/__init__.py` or they won't register on `Base.metadata` (and Alembic autogenerate won't see them).
+- **Multi-tenant (shared-schema row-level tenancy) — Session 2 in progress.** One API + one DB serve many clinics. `Clinic` (`app/models/clinic.py`, `slug` unique + `custom_domain`) is the tenant; every tenant-owned table (`User`, `Department`, `Doctor`, `DoctorAvailability`, `DoctorTimeOff`, `Appointment`, `ApiKey`, `VerificationCode`) carries a `clinic_id` FK. Resolution deps live in `app/dependencies.py`: `get_current_clinic` (X-Clinic slug header, fallback host/Origin → `custom_domain`) for web/header endpoints; `get_api_key_clinic` (tenant = the clinic that owns the API key, headers ignored) for `/api/v1/public/*`. **State: this is Session 2a (foundation only).** `clinic_id` is still **nullable**, global uniqueness (email/phone) is unchanged, routers/`services.py` do **not** yet filter by clinic, and there is no superadmin or frontend `X-Clinic` header. **Session 2b** does the cross-tenant query-isolation audit, flips `clinic_id` to NOT NULL with per-tenant uniqueness, adds the superadmin role + `/api/v1/superadmin/*`, and sends `X-Clinic` from the frontend. Until 2b lands, tenant data is NOT isolated — treat the deployment as single-tenant.
 - **Slots are computed, never stored.** `app/services.py:get_slots_for_doctor_on_date` generates bookable slots on the fly from a doctor's recurring weekly `DoctorAvailability` templates, minus `DoctorTimeOff`, minus non-cancelled `Appointment`s, minus past times. Editing a doctor's hours instantly affects all future dates. Booking calls `find_matching_slot` to re-validate the requested time server-side. Time arithmetic uses a fixed anchor date so a slot window crossing midnight terminates instead of looping.
 - **Two auth models, both in `app/dependencies.py`:**
   - JWT Bearer (`get_current_user` / `get_current_admin`) for the web portal. The role is always re-read from the DB row — the token's role claim is never trusted for authorization. `weekday` convention is Python's `Monday=0 … Sunday=6`.
