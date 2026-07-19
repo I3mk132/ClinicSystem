@@ -50,6 +50,16 @@ def get_current_admin(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 
+def get_current_superadmin(current_user: User = Depends(get_current_user)) -> User:
+    """The global developer account (manages clinics, not clinic data)."""
+    if current_user.role != UserRole.SUPERADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This action requires superadmin privileges",
+        )
+    return current_user
+
+
 def get_api_key(
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
     db: Session = Depends(get_db),
@@ -106,6 +116,27 @@ def _host_only(value: str | None) -> str | None:
     return host or None
 
 
+def _resolve_clinic(x_clinic: str | None, origin: str | None, host: str | None, db: Session) -> Clinic | None:
+    """Look up a clinic from the X-Clinic slug, falling back to host/Origin -> custom_domain.
+
+    Returns None if nothing matches. Raises 403 if a clinic is found but inactive
+    (an inactive tenant must not serve requests either way).
+    """
+    clinic: Clinic | None = None
+    if x_clinic:
+        clinic = db.query(Clinic).filter(Clinic.slug == x_clinic.strip().lower()).first()
+    if clinic is None:
+        candidate = _host_only(origin) or _host_only(host)
+        if candidate:
+            clinic = db.query(Clinic).filter(Clinic.custom_domain == candidate).first()
+    if clinic is not None and not clinic.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This clinic is not active",
+        )
+    return clinic
+
+
 def get_current_clinic(
     x_clinic: str | None = Header(default=None, alias="X-Clinic"),
     origin: str | None = Header(default=None),
@@ -113,32 +144,32 @@ def get_current_clinic(
     db: Session = Depends(get_db),
 ) -> Clinic:
     """
-    Resolve the tenant for a web-portal / header-based request.
+    Resolve the tenant for a web-portal / header-based request (required).
 
     Priority: X-Clinic slug, then request Origin/Host matched against a clinic's
     custom_domain. Raises 400 if no clinic can be resolved, 403 if it's inactive.
     """
-    clinic: Clinic | None = None
-
-    if x_clinic:
-        clinic = db.query(Clinic).filter(Clinic.slug == x_clinic.strip().lower()).first()
-
-    if clinic is None:
-        candidate = _host_only(origin) or _host_only(host)
-        if candidate:
-            clinic = db.query(Clinic).filter(Clinic.custom_domain == candidate).first()
-
+    clinic = _resolve_clinic(x_clinic, origin, host, db)
     if clinic is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Could not resolve clinic - missing or unknown X-Clinic header",
         )
-    if not clinic.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="This clinic is not active",
-        )
     return clinic
+
+
+def get_current_clinic_optional(
+    x_clinic: str | None = Header(default=None, alias="X-Clinic"),
+    origin: str | None = Header(default=None),
+    host: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+) -> Clinic | None:
+    """Like get_current_clinic but returns None instead of 400 when unresolved.
+
+    Used by /auth/login, where a SUPERADMIN (clinic_id NULL) logs in without any
+    X-Clinic header while regular users still resolve to their clinic.
+    """
+    return _resolve_clinic(x_clinic, origin, host, db)
 
 
 def get_api_key_clinic(

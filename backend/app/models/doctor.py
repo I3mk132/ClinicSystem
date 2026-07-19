@@ -15,8 +15,7 @@ class Doctor(Base):
     __tablename__ = "doctors"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    # Tenant owner. Nullable during the Session 2 split; 2b -> NOT NULL.
-    clinic_id: Mapped[int] = mapped_column(ForeignKey("clinics.id"), index=True, nullable=True)
+    clinic_id: Mapped[int] = mapped_column(ForeignKey("clinics.id"), index=True, nullable=False)
     full_name: Mapped[str] = mapped_column(String(150), nullable=False)
     title_ar: Mapped[str] = mapped_column(String(150), nullable=True)  # e.g. "استشاري جراحة"
     title_tr: Mapped[str] = mapped_column(String(150), nullable=True)  # e.g. "Genel Cerrahi Uzmanı"

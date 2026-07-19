@@ -28,8 +28,8 @@ class VerificationCode(Base):
     __tablename__ = "verification_codes"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    # Tenant owner (denormalized from user for direct filtering). 2b -> NOT NULL.
-    clinic_id: Mapped[int] = mapped_column(ForeignKey("clinics.id"), index=True, nullable=True)
+    # Tenant owner (denormalized from user for direct filtering).
+    clinic_id: Mapped[int] = mapped_column(ForeignKey("clinics.id"), index=True, nullable=False)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     purpose: Mapped[VerificationPurpose] = mapped_column(Enum(VerificationPurpose), nullable=False)
     channel: Mapped[ContactMethod] = mapped_column(Enum(ContactMethod), nullable=False)

@@ -5,7 +5,17 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.core.database import Base, engine
-from app.routers import api_keys, appointments, auth, departments, doctors, public, schedules, users
+from app.routers import (
+    api_keys,
+    appointments,
+    auth,
+    departments,
+    doctors,
+    public,
+    schedules,
+    superadmin,
+    users,
+)
 
 # Import models so they're registered on Base.metadata before create_all()
 from app import models  # noqa: F401
@@ -47,3 +57,4 @@ app.include_router(schedules.router, prefix=settings.API_V1_PREFIX)
 app.include_router(appointments.router, prefix=settings.API_V1_PREFIX)
 app.include_router(api_keys.router, prefix=settings.API_V1_PREFIX)
 app.include_router(public.router, prefix=settings.API_V1_PREFIX)
+app.include_router(superadmin.router, prefix=settings.API_V1_PREFIX)

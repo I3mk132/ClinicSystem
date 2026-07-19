@@ -40,6 +40,10 @@ const Api = {
 
   async request(method, path, { body, params, auth = false } = {}) {
     const headers = { "Content-Type": "application/json" };
+    // Identify the tenant on every request so the backend serves this clinic's
+    // data (multi-tenant). Slug lives in config.js.
+    const slug = window.CLINIC_CONFIG.CLINIC_SLUG;
+    if (slug) headers["X-Clinic"] = slug;
     if (auth) {
       const token = Auth.getToken();
       if (token) headers["Authorization"] = `Bearer ${token}`;

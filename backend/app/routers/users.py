@@ -22,7 +22,15 @@ def update_my_profile(
 
     new_phone = updates.get("phone")
     if new_phone:
-        taken = db.query(User).filter(User.phone == new_phone, User.id != current_user.id).first()
+        taken = (
+            db.query(User)
+            .filter(
+                User.clinic_id == current_user.clinic_id,
+                User.phone == new_phone,
+                User.id != current_user.id,
+            )
+            .first()
+        )
         if taken:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -48,7 +56,12 @@ def change_my_password(
     db.commit()
 
 
-@router.get("", response_model=List[UserOut], dependencies=[Depends(get_current_admin)])
-def list_users(db: Session = Depends(get_db)):
-    """Admin only: list all registered patients/admins."""
-    return db.query(User).order_by(User.created_at.desc()).all()
+@router.get("", response_model=List[UserOut])
+def list_users(admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
+    """Admin only: list registered patients/admins in the admin's own clinic."""
+    return (
+        db.query(User)
+        .filter(User.clinic_id == admin.clinic_id)
+        .order_by(User.created_at.desc())
+        .all()
+    )

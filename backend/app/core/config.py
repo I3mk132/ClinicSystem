@@ -32,10 +32,15 @@ class Settings(BaseSettings):
     # --- CORS ---
     CORS_ORIGINS: str = "http://localhost:5500,http://127.0.0.1:5500"
 
-    # --- Default admin (created by seed script) ---
+    # --- Default clinic-admin (created by seed script for the demo clinic) ---
     FIRST_ADMIN_EMAIL: str = "admin@myclinic.com"
     FIRST_ADMIN_PASSWORD: str = "Admin@12345"
     FIRST_ADMIN_NAME: str = "Clinic Administrator"
+
+    # --- Superadmin (the developer; global, clinic_id NULL; created by seed) ---
+    SUPERADMIN_EMAIL: str = "superadmin@myclinic.com"
+    SUPERADMIN_PASSWORD: str = "Super@12345"
+    SUPERADMIN_NAME: str = "Platform Superadmin"
 
     # --- Seeding ---
     # Demo departments/doctors/API key (python -m app.seed). Set to false in

@@ -32,10 +32,15 @@ def create_appointment(
     """A logged-in patient books an appointment. This is the core booking action."""
     # with_for_update() locks the doctor row until commit, serializing concurrent
     # bookings for the same doctor so two requests can't take the same slot
-    # (real row lock on PostgreSQL/MySQL; harmless no-op on SQLite).
+    # (real row lock on PostgreSQL/MySQL; harmless no-op on SQLite). The doctor
+    # MUST belong to the patient's own clinic.
     doctor = (
         db.query(Doctor)
-        .filter(Doctor.id == payload.doctor_id, Doctor.is_active.is_(True))
+        .filter(
+            Doctor.id == payload.doctor_id,
+            Doctor.clinic_id == current_user.clinic_id,
+            Doctor.is_active.is_(True),
+        )
         .with_for_update()
         .first()
     )
@@ -53,6 +58,7 @@ def create_appointment(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This time slot is no longer available")
 
     appointment = Appointment(
+        clinic_id=current_user.clinic_id,
         patient_id=current_user.id,
         doctor_id=payload.doctor_id,
         department_id=payload.department_id,
@@ -75,7 +81,10 @@ def my_appointments(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    query = _load(db.query(Appointment)).filter(Appointment.patient_id == current_user.id)
+    query = _load(db.query(Appointment)).filter(
+        Appointment.clinic_id == current_user.clinic_id,
+        Appointment.patient_id == current_user.id,
+    )
     if upcoming_only:
         query = query.filter(Appointment.appointment_date >= date_type.today())
     return query.order_by(Appointment.appointment_date.desc(), Appointment.start_time.desc()).all()
@@ -87,7 +96,12 @@ def cancel_my_appointment(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    appointment = db.query(Appointment).filter(Appointment.id == appointment_id).first()
+    # Scoped to the caller's clinic - an appointment in another clinic is a 404 here.
+    appointment = (
+        db.query(Appointment)
+        .filter(Appointment.id == appointment_id, Appointment.clinic_id == current_user.clinic_id)
+        .first()
+    )
     if not appointment:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found")
     if appointment.patient_id != current_user.id and current_user.role.value != "admin":
@@ -101,18 +115,19 @@ def cancel_my_appointment(
 
 
 # ---------------------------------------------------------------------------
-# Admin: full visibility & management of every booking
+# Admin: full visibility & management of every booking (in their own clinic)
 # ---------------------------------------------------------------------------
-@router.get("", response_model=List[AppointmentOut], dependencies=[Depends(get_current_admin)])
+@router.get("", response_model=List[AppointmentOut])
 def list_all_appointments(
     doctor_id: Optional[int] = None,
     department_id: Optional[int] = None,
     status_filter: Optional[AppointmentStatus] = Query(default=None, alias="status"),
     date_from: Optional[date_type] = None,
     date_to: Optional[date_type] = None,
+    admin: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
-    query = _load(db.query(Appointment))
+    query = _load(db.query(Appointment)).filter(Appointment.clinic_id == admin.clinic_id)
     if doctor_id is not None:
         query = query.filter(Appointment.doctor_id == doctor_id)
     if department_id is not None:
@@ -126,10 +141,18 @@ def list_all_appointments(
     return query.order_by(Appointment.appointment_date.desc(), Appointment.start_time.desc()).all()
 
 
-@router.patch("/{appointment_id}/status", response_model=AppointmentOut,
-              dependencies=[Depends(get_current_admin)])
-def update_appointment_status(appointment_id: int, payload: AppointmentStatusUpdate, db: Session = Depends(get_db)):
-    appointment = db.query(Appointment).filter(Appointment.id == appointment_id).first()
+@router.patch("/{appointment_id}/status", response_model=AppointmentOut)
+def update_appointment_status(
+    appointment_id: int,
+    payload: AppointmentStatusUpdate,
+    admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    appointment = (
+        db.query(Appointment)
+        .filter(Appointment.id == appointment_id, Appointment.clinic_id == admin.clinic_id)
+        .first()
+    )
     if not appointment:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found")
     appointment.status = payload.status

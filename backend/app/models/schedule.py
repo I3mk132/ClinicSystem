@@ -16,8 +16,8 @@ class DoctorAvailability(Base):
     __tablename__ = "doctor_availabilities"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    # Tenant owner (denormalized from doctor for direct filtering). 2b -> NOT NULL.
-    clinic_id: Mapped[int] = mapped_column(ForeignKey("clinics.id"), index=True, nullable=True)
+    # Tenant owner (denormalized from doctor for direct filtering).
+    clinic_id: Mapped[int] = mapped_column(ForeignKey("clinics.id"), index=True, nullable=False)
     doctor_id: Mapped[int] = mapped_column(ForeignKey("doctors.id"), nullable=False)
     weekday: Mapped[int] = mapped_column(Integer, nullable=False)  # 0=Monday ... 6=Sunday
     start_time: Mapped[Time] = mapped_column(Time, nullable=False)
@@ -34,8 +34,8 @@ class DoctorTimeOff(Base):
     __tablename__ = "doctor_time_off"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    # Tenant owner (denormalized from doctor for direct filtering). 2b -> NOT NULL.
-    clinic_id: Mapped[int] = mapped_column(ForeignKey("clinics.id"), index=True, nullable=True)
+    # Tenant owner (denormalized from doctor for direct filtering).
+    clinic_id: Mapped[int] = mapped_column(ForeignKey("clinics.id"), index=True, nullable=False)
     doctor_id: Mapped[int] = mapped_column(ForeignKey("doctors.id"), nullable=False)
     date: Mapped[Date] = mapped_column(Date, nullable=False)
     reason: Mapped[str] = mapped_column(String(200), nullable=True)

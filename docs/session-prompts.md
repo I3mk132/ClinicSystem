@@ -40,18 +40,22 @@ Update CLAUDE.md's OTP section when done.
 
 ---
 
-## Session 2 — Multi-tenant core (foundation, everything depends on this)
+## Session 2 — Multi-tenant core (foundation, everything depends on this) ✅ DONE (2026-07-19)
 
-> **Split into 2a / 2b (see the split note at the bottom).**
-> **2a ✅ DONE (2026-07-19):** `Clinic` model (slug + custom_domain), nullable
-> `clinic_id` FK on all 8 tenant tables, Alembic introduced (`0001` baseline +
-> `0002` tenancy, `create_all()` still builds fresh dev DBs), `get_current_clinic`
-> (X-Clinic slug + host/Origin→custom_domain fallback) and `get_api_key_clinic`
-> resolution deps, and a tenant-scoped seed (demo clinic, slug `demo`).
-> **2b ▶ NEXT:** cross-tenant query-isolation audit of every router + `services.py`,
-> flip `clinic_id` to NOT NULL with per-tenant uniqueness (email/phone/dept name),
-> superadmin role + `/api/v1/superadmin/*`, and frontend `CLINIC_SLUG` +
-> `X-Clinic` header. **Data is NOT isolated until 2b lands.**
+> Landed in two parts.
+> **2a:** `Clinic` model (slug + custom_domain), `clinic_id` FK on all 8 tenant
+> tables, Alembic introduced (`0001` baseline + `0002` tenancy), resolution deps
+> (`get_current_clinic`, `get_api_key_clinic`), tenant-scoped seed (demo clinic).
+> **2b:** every router + `services.py` now filters by the resolved clinic (public
+> reads by X-Clinic header, JWT endpoints by the user/admin's `clinic_id`,
+> `/public/*` by the API key's clinic); migration `0003` flips `clinic_id` to
+> NOT NULL (except `users`, nullable for superadmin) + per-clinic uniqueness
+> (email/phone/dept name); `SUPERADMIN` role + `/api/v1/superadmin/*` (create/
+> list/deactivate clinics, create a clinic's first admin), seeded from
+> `SUPERADMIN_*` env; frontend sends `CLINIC_SLUG` as `X-Clinic` on every request.
+> Verified: two clinics fully isolated — cross-tenant admin/JWT/API-key access is
+> 404/empty, same email registers independently per clinic, superadmin manages
+> tenants without an X-Clinic header.
 
 ```
 Read CLAUDE.md first.

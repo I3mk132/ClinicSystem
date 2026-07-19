@@ -13,7 +13,8 @@ from app.core.security import (
     verify_code,
     verify_password,
 )
-from app.dependencies import get_current_user
+from app.dependencies import get_current_clinic, get_current_clinic_optional, get_current_user
+from app.models.clinic import Clinic
 from app.models.user import ContactMethod, User, UserRole
 from app.models.verification import VerificationCode, VerificationPurpose
 from app.notifications import send_otp
@@ -41,6 +42,7 @@ def _consume_code(db: Session, user: User, purpose: VerificationPurpose, plain_c
     code_entry = (
         db.query(VerificationCode)
         .filter(
+            VerificationCode.clinic_id == user.clinic_id,
             VerificationCode.user_id == user.id,
             VerificationCode.purpose == purpose,
             VerificationCode.is_used.is_(False),
@@ -70,6 +72,7 @@ def _issue_code(db: Session, user: User, purpose: VerificationPurpose) -> str:
     code = generate_otp_code(settings.OTP_LENGTH)
     db.add(
         VerificationCode(
+            clinic_id=user.clinic_id,
             user_id=user.id,
             purpose=purpose,
             channel=user.contact_method,
@@ -85,16 +88,21 @@ def _issue_code(db: Session, user: User, purpose: VerificationPurpose) -> str:
 
 
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
-def register(payload: UserCreate, db: Session = Depends(get_db)):
+def register(
+    payload: UserCreate,
+    clinic: Clinic = Depends(get_current_clinic),
+    db: Session = Depends(get_db),
+):
     # Emails are stored (and looked up) lowercased so "User@x.com" and
-    # "user@x.com" can't become two different accounts.
+    # "user@x.com" can't become two different accounts. Uniqueness is PER clinic.
     email = payload.email.lower() if payload.email else None
-    if email and db.query(User).filter(User.email == email).first():
+    if email and db.query(User).filter(User.clinic_id == clinic.id, User.email == email).first():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="An account with this email already exists")
-    if payload.phone and db.query(User).filter(User.phone == payload.phone).first():
+    if payload.phone and db.query(User).filter(User.clinic_id == clinic.id, User.phone == payload.phone).first():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="An account with this phone number already exists")
 
     user = User(
+        clinic_id=clinic.id,
         full_name=payload.full_name,
         email=email,
         phone=payload.phone,
@@ -115,9 +123,26 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=Token)
-def login(payload: LoginRequest, db: Session = Depends(get_db)):
+def login(
+    payload: LoginRequest,
+    clinic: Clinic | None = Depends(get_current_clinic_optional),
+    db: Session = Depends(get_db),
+):
     identifier = payload.identifier.strip().lower()  # email lookups are case-insensitive; harmless for phone numbers
-    user = db.query(User).filter((User.email == identifier) | (User.phone == identifier)).first()
+    match = (User.email == identifier) | (User.phone == identifier)
+
+    # Regular users are scoped to the resolved clinic (the same email can exist
+    # in more than one clinic). SUPERADMIN is global (clinic_id NULL) and logs in
+    # with no X-Clinic header, so fall back to a global superadmin lookup.
+    user = None
+    if clinic is not None:
+        user = db.query(User).filter(User.clinic_id == clinic.id, match).first()
+    if user is None:
+        user = (
+            db.query(User)
+            .filter(User.role == UserRole.SUPERADMIN, User.clinic_id.is_(None), match)
+            .first()
+        )
     if not user or not verify_password(payload.password, user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email/phone or password")
     if not user.is_active:
@@ -136,9 +161,17 @@ def read_current_user(current_user: User = Depends(get_current_user)):
 # Forgot password (code sent to whichever contact_method the user signed up with)
 # ---------------------------------------------------------------------------
 @router.post("/password/forgot", response_model=MessageResponse)
-def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db)):
+def forgot_password(
+    payload: ForgotPasswordRequest,
+    clinic: Clinic = Depends(get_current_clinic),
+    db: Session = Depends(get_db),
+):
     identifier = payload.identifier.strip().lower()  # email lookups are case-insensitive; harmless for phone numbers
-    user = db.query(User).filter((User.email == identifier) | (User.phone == identifier)).first()
+    user = (
+        db.query(User)
+        .filter(User.clinic_id == clinic.id, (User.email == identifier) | (User.phone == identifier))
+        .first()
+    )
 
     # Always return the same generic message, whether or not an account was
     # found, so this endpoint can't be used to check which emails/phones
@@ -152,9 +185,17 @@ def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db
 
 
 @router.post("/password/reset", response_model=MessageResponse)
-def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db)):
+def reset_password(
+    payload: ResetPasswordRequest,
+    clinic: Clinic = Depends(get_current_clinic),
+    db: Session = Depends(get_db),
+):
     identifier = payload.identifier.strip().lower()  # email lookups are case-insensitive; harmless for phone numbers
-    user = db.query(User).filter((User.email == identifier) | (User.phone == identifier)).first()
+    user = (
+        db.query(User)
+        .filter(User.clinic_id == clinic.id, (User.email == identifier) | (User.phone == identifier))
+        .first()
+    )
     # Same 400 message whether the identifier is unknown or the code is wrong,
     # so this endpoint can't be used to probe which accounts exist.
     if not user:

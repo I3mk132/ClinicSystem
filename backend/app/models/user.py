@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -9,7 +9,8 @@ from app.core.database import Base
 
 class UserRole(str, enum.Enum):
     PATIENT = "patient"
-    ADMIN = "admin"
+    ADMIN = "admin"          # clinic-admin: scoped to their own clinic
+    SUPERADMIN = "superadmin"  # the developer: global, not tied to a clinic (clinic_id is NULL)
 
 
 class ContactMethod(str, enum.Enum):
@@ -33,14 +34,24 @@ class User(Base):
     """
 
     __tablename__ = "users"
+    # Email/phone are unique PER clinic, not globally (a SUPERADMIN row has
+    # clinic_id NULL, and NULLs are distinct in a unique constraint, so multiple
+    # superadmins are still allowed).
+    __table_args__ = (
+        UniqueConstraint("clinic_id", "email", name="uq_users_clinic_email"),
+        UniqueConstraint("clinic_id", "phone", name="uq_users_clinic_phone"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    # Tenant this row belongs to. Nullable during the Session 2 split; Session 2b
-    # flips it to NOT NULL and makes email/phone unique per-clinic instead of global.
+    # Tenant this row belongs to. Stays nullable ON PURPOSE: a SUPERADMIN is a
+    # global developer account with clinic_id = NULL. Every PATIENT/ADMIN row
+    # must have it set (enforced in the auth/superadmin write paths). email/phone
+    # are unique PER clinic (see __table_args__), so the same email can exist in
+    # two clinics.
     clinic_id: Mapped[int] = mapped_column(ForeignKey("clinics.id"), index=True, nullable=True)
     full_name: Mapped[str] = mapped_column(String(150), nullable=False)
-    email: Mapped[str] = mapped_column(String(150), unique=True, index=True, nullable=True)
-    phone: Mapped[str] = mapped_column(String(30), unique=True, index=True, nullable=True)
+    email: Mapped[str] = mapped_column(String(150), index=True, nullable=True)
+    phone: Mapped[str] = mapped_column(String(30), index=True, nullable=True)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[UserRole] = mapped_column(Enum(UserRole), default=UserRole.PATIENT, nullable=False)
     preferred_language: Mapped[str] = mapped_column(String(5), default="ar")

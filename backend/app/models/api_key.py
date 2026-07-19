@@ -24,8 +24,8 @@ class ApiKey(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     # The clinic this key belongs to. Public /api/v1/public/* routes resolve the
     # tenant from the KEY (never from a header) - a key must never read another
-    # clinic's data. Nullable during the Session 2 split; 2b -> NOT NULL.
-    clinic_id: Mapped[int] = mapped_column(ForeignKey("clinics.id"), index=True, nullable=True)
+    # clinic's data.
+    clinic_id: Mapped[int] = mapped_column(ForeignKey("clinics.id"), index=True, nullable=False)
     name: Mapped[str] = mapped_column(String(150), nullable=False)  # e.g. "Telegram Bot", "Main HIS"
     hashed_key: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     key_prefix: Mapped[str] = mapped_column(String(12), nullable=False)  # shown in the UI so admins can tell keys apart

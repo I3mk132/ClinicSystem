@@ -39,6 +39,30 @@ def seed_clinic(db) -> Clinic:
     return clinic
 
 
+def seed_superadmin(db):
+    """The global developer account (clinic_id NULL). Manages clinics via /superadmin/*."""
+    existing = (
+        db.query(User)
+        .filter(User.role == UserRole.SUPERADMIN, User.email == settings.SUPERADMIN_EMAIL)
+        .first()
+    )
+    if existing:
+        print(f"[seed] Superadmin '{settings.SUPERADMIN_EMAIL}' already exists - skipping.")
+        return
+    superadmin = User(
+        clinic_id=None,  # global - not tied to any clinic
+        full_name=settings.SUPERADMIN_NAME,
+        email=settings.SUPERADMIN_EMAIL,
+        hashed_password=hash_password(settings.SUPERADMIN_PASSWORD),
+        role=UserRole.SUPERADMIN,
+        preferred_language="ar",
+        is_verified=True,
+    )
+    db.add(superadmin)
+    db.commit()
+    print(f"[seed] Created superadmin account -> {settings.SUPERADMIN_EMAIL} / {settings.SUPERADMIN_PASSWORD}")
+
+
 def seed_admin(db, clinic: Clinic):
     existing = db.query(User).filter(User.email == settings.FIRST_ADMIN_EMAIL).first()
     if existing:
@@ -162,6 +186,7 @@ def main():
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     try:
+        seed_superadmin(db)
         clinic = seed_clinic(db)
         seed_admin(db, clinic)
         if settings.SEED_DEMO_DATA:
