@@ -14,6 +14,7 @@ from app.routers import (
     public,
     schedules,
     superadmin,
+    theme,
     users,
 )
 
@@ -57,4 +58,6 @@ app.include_router(schedules.router, prefix=settings.API_V1_PREFIX)
 app.include_router(appointments.router, prefix=settings.API_V1_PREFIX)
 app.include_router(api_keys.router, prefix=settings.API_V1_PREFIX)
 app.include_router(public.router, prefix=settings.API_V1_PREFIX)
+app.include_router(theme.public_router, prefix=settings.API_V1_PREFIX)
+app.include_router(theme.admin_router, prefix=settings.API_V1_PREFIX)
 app.include_router(superadmin.router, prefix=settings.API_V1_PREFIX)

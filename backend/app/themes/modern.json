@@ -1,0 +1,33 @@
+{
+  "label": "Modern Indigo",
+  "fonts": {
+    "import_url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700;800&family=JetBrains+Mono:wght@500;600&display=swap",
+    "latin": "'Inter', 'Segoe UI', sans-serif",
+    "arabic": "'Tajawal', 'Segoe UI', sans-serif",
+    "mono": "'JetBrains Mono', 'Courier New', monospace"
+  },
+  "colors": {
+    "bg": "#F7F8FC",
+    "bg-alt": "#EEF0FB",
+    "surface": "#FFFFFF",
+    "primary": "#4F46E5",
+    "primary-dark": "#3B33C0",
+    "primary-light": "#E7E5FB",
+    "secondary": "#1E1B3A",
+    "accent": "#EC4899",
+    "accent-dark": "#C42B72",
+    "accent-light": "#FCE4F1",
+    "text": "#1E1B3A",
+    "text-muted": "#5B5773",
+    "text-faint": "#9A97AE",
+    "border": "#E4E3F0",
+    "border-strong": "#CBC9E0"
+  },
+  "radius": {
+    "sm": "8px",
+    "md": "14px",
+    "lg": "20px",
+    "pill": "999px"
+  },
+  "density": "compact"
+}

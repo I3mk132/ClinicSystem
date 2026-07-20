@@ -2,6 +2,7 @@ from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, String
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.types import JSON
 
 from app.core.database import Base
 
@@ -30,3 +31,13 @@ class Clinic(Base):
     custom_domain: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    # --- Theming (Session 3) -------------------------------------------------
+    # theme_preset: name of a developer-controlled preset file in app/themes/
+    # (the "big decisions": font imports, full palette, radius, density).
+    # Changeable ONLY by the superadmin. theme_overrides: the admin-editable
+    # layer (colors, logo, display name + hero/contact/footer texts per lang)
+    # that is merged ON TOP of the preset -> the effective theme served to the
+    # frontend. See app/theme.py for the merge; GET /public/theme returns it.
+    theme_preset: Mapped[str] = mapped_column(String(50), default="default", nullable=False)
+    theme_overrides: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)

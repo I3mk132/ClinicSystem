@@ -31,7 +31,21 @@ def seed_clinic(db) -> Clinic:
     if clinic:
         print(f"[seed] Clinic '{DEMO_CLINIC_SLUG}' already exists - skipping.")
         return clinic
-    clinic = Clinic(slug=DEMO_CLINIC_SLUG, name="Demo Clinic", is_active=True)
+    # Seed a demo theme override so the out-of-the-box deployment shows real
+    # bilingual branding (and demonstrates Session 3 theming). The frontend's
+    # config.js name/logo are only a fallback for when no theme is served.
+    clinic = Clinic(
+        slug=DEMO_CLINIC_SLUG,
+        name="Demo Clinic",
+        is_active=True,
+        theme_preset="default",
+        theme_overrides={
+            "name": {"ar": "عيادة ديجيفو الطبية", "tr": "dijivoo Klinik"},
+            "hero": {
+                "title": {"ar": "رعاية صحية بموعد واحد", "tr": "Tek randevuyla sağlık"},
+            },
+        },
+    )
     db.add(clinic)
     db.commit()
     db.refresh(clinic)

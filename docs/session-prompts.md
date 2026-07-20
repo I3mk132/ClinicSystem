@@ -112,7 +112,16 @@ depend on it.
 
 ---
 
-## Session 3 — Per-clinic theming + developer config presets
+## Session 3 — Per-clinic theming + developer config presets ✅ DONE
+
+Landed: `clinics.theme_preset` + `theme_overrides` (JSON) columns (migration `0004`);
+developer presets in `backend/app/themes/*.json` (`default`, `modern`); `app/theme.py`
+merge (`effective_theme`); no-auth `GET /api/v1/public/theme` (X-Clinic) in
+`routers/theme.py:public_router`; admin `GET`/`PUT /api/v1/admin/theme`; superadmin
+`GET /superadmin/presets` + `PATCH /superadmin/clinics/{id}/preset`; frontend `theme.js`
+(cached CSS-variable apply, logo/name/text swap, `data-theme-text` nodes) loaded on every
+page; admin **Theme** panel (colour pickers + per-language texts + logo, live preview).
+Verified: two clinics render different colours/preset/logo/texts from one deployed frontend.
 
 ```
 Read CLAUDE.md first. Requires the multi-tenant core (clinic model, X-Clinic

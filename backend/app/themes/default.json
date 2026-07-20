@@ -1,0 +1,33 @@
+{
+  "label": "Clinical Teal (default)",
+  "fonts": {
+    "import_url": "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Cairo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap",
+    "latin": "'Plus Jakarta Sans', 'Segoe UI', sans-serif",
+    "arabic": "'Cairo', 'Segoe UI', sans-serif",
+    "mono": "'IBM Plex Mono', 'Courier New', monospace"
+  },
+  "colors": {
+    "bg": "#F5F9FA",
+    "bg-alt": "#EEF6F6",
+    "surface": "#FFFFFF",
+    "primary": "#0D7377",
+    "primary-dark": "#0A5960",
+    "primary-light": "#E3F2F1",
+    "secondary": "#14262B",
+    "accent": "#F2A93B",
+    "accent-dark": "#D68C1F",
+    "accent-light": "#FDF1DC",
+    "text": "#14262B",
+    "text-muted": "#5C7278",
+    "text-faint": "#93A6AA",
+    "border": "#E1EAEC",
+    "border-strong": "#CBDBDD"
+  },
+  "radius": {
+    "sm": "10px",
+    "md": "16px",
+    "lg": "24px",
+    "pill": "999px"
+  },
+  "density": "comfortable"
+}

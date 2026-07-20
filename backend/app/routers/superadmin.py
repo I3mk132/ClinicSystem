@@ -15,8 +15,15 @@ from app.core.security import hash_password
 from app.dependencies import get_current_superadmin
 from app.models.clinic import Clinic
 from app.models.user import User, UserRole
-from app.schemas.clinic import ClinicAdminCreate, ClinicCreate, ClinicOut, ClinicUpdate
+from app.schemas.clinic import (
+    ClinicAdminCreate,
+    ClinicCreate,
+    ClinicOut,
+    ClinicPresetUpdate,
+    ClinicUpdate,
+)
 from app.schemas.user import UserOut
+from app.theme import preset_names
 
 router = APIRouter(
     prefix="/superadmin",
@@ -69,6 +76,24 @@ def update_clinic(clinic_id: int, payload: ClinicUpdate, db: Session = Depends(g
         updates["custom_domain"] = domain
     for field, value in updates.items():
         setattr(clinic, field, value)
+    db.commit()
+    db.refresh(clinic)
+    return clinic
+
+
+@router.get("/presets", response_model=List[str])
+def list_presets():
+    """The developer-controlled theme presets available to assign to clinics."""
+    return preset_names()
+
+
+@router.patch("/clinics/{clinic_id}/preset", response_model=ClinicOut)
+def set_clinic_preset(clinic_id: int, payload: ClinicPresetUpdate, db: Session = Depends(get_db)):
+    """Switch which developer preset a clinic uses (the 'big decisions' layer)."""
+    clinic = _get_clinic(db, clinic_id)
+    if payload.theme_preset not in preset_names():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown theme preset")
+    clinic.theme_preset = payload.theme_preset
     db.commit()
     db.refresh(clinic)
     return clinic

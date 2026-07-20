@@ -25,6 +25,7 @@
         <button class="admin-tab" data-tab="doctors" data-i18n="admin.tabDoctors"></button>
         <button class="admin-tab" data-tab="departments" data-i18n="admin.tabDepartments"></button>
         <button class="admin-tab" data-tab="schedules" data-i18n="admin.tabSchedules"></button>
+        <button class="admin-tab" data-tab="theme" data-i18n="admin.tabTheme"></button>
         <button class="admin-tab" data-tab="integrations" data-i18n="admin.tabIntegrations"></button>
       </nav>
 
@@ -152,6 +153,15 @@
           <p class="muted" id="schedule-placeholder" data-i18n="admin.selectDoctorFirst" style="margin-top:20px;"></p>
         </section>
 
+        <!-- Theme (per-clinic branding) -->
+        <section class="admin-panel" data-panel="theme">
+          <div class="card card-pad" style="margin-bottom:20px;">
+            <h3 style="margin-bottom:8px;" data-i18n="admin.tabTheme"></h3>
+            <p class="muted" style="margin-bottom:0;" data-i18n="admin.themeIntro"></p>
+          </div>
+          <div id="theme-editor"><div class="spinner"></div></div>
+        </section>
+
         <!-- Integrations (public API keys) -->
         <section class="admin-panel" data-panel="integrations">
           <div class="card card-pad" style="margin-bottom:20px;">
@@ -190,6 +200,7 @@
 <script src="assets/js/config.js"></script>
 <script src="assets/js/auth.js"></script>
 <script src="assets/js/api.js"></script>
+<script src="assets/js/theme.js"></script>
 <script src="assets/js/i18n.js"></script>
 <script src="assets/js/layout.js"></script>
 <script src="assets/js/icons.js"></script>

@@ -34,7 +34,7 @@ const Layout = {
       <nav class="navbar">
         <div class="navbar-inner">
           <a class="brand" href="index.html">
-            <span class="brand-mark">${this._logoSvg()}</span>
+            <span class="brand-mark" id="brand-mark">${this._brandMark()}</span>
             <span id="brand-name">${I18n.clinicName()}</span>
           </a>
           <button class="navbar-toggle btn-icon btn-ghost" id="nav-toggle" aria-label="menu">
@@ -72,9 +72,15 @@ const Layout = {
     });
     document.getElementById("logout-btn")?.addEventListener("click", () => Auth.logout());
 
-    document.addEventListener("clinic:langchange", () => {
-      document.getElementById("brand-name").textContent = I18n.clinicName();
-    });
+    const refreshBrand = () => {
+      const nameEl = document.getElementById("brand-name");
+      if (nameEl) nameEl.textContent = I18n.clinicName();
+      const markEl = document.getElementById("brand-mark");
+      if (markEl) markEl.innerHTML = this._brandMark();
+    };
+    document.addEventListener("clinic:langchange", refreshBrand);
+    // A fresh theme fetch can arrive after mount -> swap logo/name then.
+    document.addEventListener("clinic:themechange", refreshBrand);
   },
 
   _mountFooter() {
@@ -89,16 +95,39 @@ const Layout = {
             <strong id="footer-brand">${I18n.clinicName()}</strong>
           </div>
           <small>&copy; ${year} <span id="footer-brand-2">${I18n.clinicName()}</span> — <span data-i18n="footer.rights"></span></small>
+          <small class="muted" data-theme-text="footer"></small>
         </div>
       </footer>
     `;
     I18n.translateDom(host);
-    document.addEventListener("clinic:langchange", () => {
+    const refreshFooter = () => {
       const a = document.getElementById("footer-brand");
       const b = document.getElementById("footer-brand-2");
       if (a) a.textContent = I18n.clinicName();
       if (b) b.textContent = I18n.clinicName();
-    });
+      if (window.Theme) Theme.applyTexts();
+    };
+    document.addEventListener("clinic:langchange", refreshFooter);
+    document.addEventListener("clinic:themechange", refreshFooter);
+  },
+
+  /**
+   * Brand mark: the clinic's uploaded logo (CLINIC_LOGO_URL, set from the theme)
+   * if present, falling back to the built-in SVG mark - including if the image
+   * fails to load (onerror restores the SVG so a broken URL never shows a
+   * broken-image icon).
+   */
+  _brandMark(size = 20) {
+    const url = window.CLINIC_CONFIG && window.CLINIC_CONFIG.CLINIC_LOGO_URL;
+    if (url && typeof url === "string" && url.trim()) {
+      return `<img src="${esc(url)}" alt="" width="${size}" height="${size}" data-mark-size="${size}" style="object-fit:contain;border-radius:6px;" onerror="Layout.brandImgFallback(this)">`;
+    }
+    return this._logoSvg(size);
+  },
+
+  /** onerror handler: a broken logo image falls back to the built-in SVG mark. */
+  brandImgFallback(img) {
+    img.outerHTML = this._logoSvg(Number(img.getAttribute("data-mark-size")) || 20);
   },
 
   _logoSvg(size = 20) {

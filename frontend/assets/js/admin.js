@@ -20,6 +20,7 @@
     if (tab === "doctors") loadDoctors();
     if (tab === "departments") loadDepartments();
     if (tab === "schedules") loadScheduleDoctorOptions();
+    if (tab === "theme") loadTheme();
     if (tab === "integrations") loadApiKeys();
   }
 
@@ -586,6 +587,162 @@
       },
     });
   });
+
+  // ============================================================
+  // Theme (per-clinic branding)
+  // ============================================================
+  async function loadTheme() {
+    const host = document.getElementById("theme-editor");
+    host.innerHTML = `<div class="spinner"></div>`;
+    let data;
+    try {
+      data = await Api.get("/admin/theme", { auth: true });
+    } catch (err) {
+      Layout.toast(err.message, "error");
+      return;
+    }
+    renderThemeEditor(host, data);
+  }
+
+  function renderThemeEditor(host, data) {
+    const eff = data.effective || {};
+    const ov = data.overrides || {};
+    const colors = eff.colors || {};
+    const ovGet = (path) => path.split(".").reduce((o, k) => (o == null ? undefined : o[k]), ov);
+
+    const colorRow = (key, labelKey) => `
+      <div class="field">
+        <label>${I18n.t("admin." + labelKey)}</label>
+        <div class="row" style="gap:10px; align-items:center;">
+          <input type="color" data-theme-color="${key}" value="${esc(colors[key] || "#000000")}" style="width:52px; height:40px; padding:2px;">
+          <span class="mono muted" data-color-hex="${key}">${esc(colors[key] || "")}</span>
+        </div>
+      </div>`;
+
+    const bilingual = (labelKey, arVal, trVal, arAttr, trAttr) => `
+      <div class="field">
+        <label>${I18n.t("admin." + labelKey)}</label>
+        <div class="grid grid-2" style="gap:10px;">
+          <input type="text" ${arAttr} placeholder="${I18n.t("admin.themeArabic")}" value="${esc(arVal || "")}">
+          <input type="text" ${trAttr} placeholder="${I18n.t("admin.themeTurkish")}" value="${esc(trVal || "")}">
+        </div>
+      </div>`;
+
+    host.innerHTML = `
+      <div class="card card-pad" style="margin-bottom:18px;">
+        <p class="muted" style="margin:0;">
+          ${I18n.t("admin.themeCurrentPreset")}: <strong>${esc(eff.label || eff.preset || "")}</strong>
+        </p>
+      </div>
+
+      <form id="theme-form">
+        <div class="card card-pad" style="margin-bottom:18px;">
+          <h4 style="margin-top:0;" data-i18n="admin.themeColors"></h4>
+          <div class="grid grid-3">
+            ${colorRow("primary", "themePrimary")}
+            ${colorRow("secondary", "themeSecondary")}
+            ${colorRow("accent", "themeAccent")}
+          </div>
+          <div class="field" style="margin-top:8px;">
+            <label data-i18n="admin.themeLogoUrl"></label>
+            <input type="text" data-theme-field="logo_url" value="${esc(ov.logo_url || "")}" placeholder="https://…/logo.png">
+          </div>
+        </div>
+
+        <div class="card card-pad" style="margin-bottom:18px;">
+          <h4 style="margin-top:0;" data-i18n="admin.themeTextsTitle"></h4>
+          ${bilingual("themeDisplayName", ovGet("name.ar"), ovGet("name.tr"), 'data-theme-field="name.ar"', 'data-theme-field="name.tr"')}
+          ${bilingual("themeHeroTitle", ovGet("hero.title.ar"), ovGet("hero.title.tr"), 'data-theme-field="hero.title.ar"', 'data-theme-field="hero.title.tr"')}
+          ${bilingual("themeHeroSubtitle", ovGet("hero.subtitle.ar"), ovGet("hero.subtitle.tr"), 'data-theme-field="hero.subtitle.ar"', 'data-theme-field="hero.subtitle.tr"')}
+          <div class="field">
+            <label data-i18n="admin.themeContactPhone"></label>
+            <input type="text" data-theme-field="contact.phone" value="${esc(ovGet("contact.phone") || "")}">
+          </div>
+          ${bilingual("themeContactAddress", ovGet("contact.address.ar"), ovGet("contact.address.tr"), 'data-theme-field="contact.address.ar"', 'data-theme-field="contact.address.tr"')}
+          ${bilingual("themeFooterText", ovGet("footer.ar"), ovGet("footer.tr"), 'data-theme-field="footer.ar"', 'data-theme-field="footer.tr"')}
+        </div>
+
+        <div class="row" style="justify-content:flex-end; gap:10px;">
+          <button type="button" class="btn btn-danger-ghost" id="theme-reset-btn" data-i18n="admin.themeReset"></button>
+          <button type="submit" class="btn btn-primary">${I18n.t("common.save")}</button>
+        </div>
+      </form>`;
+    I18n.translateDom(host);
+
+    // Track loaded colours so we only persist the ones the admin actually
+    // changes (untouched colours stay driven by the preset).
+    const initialColors = { primary: colors.primary, secondary: colors.secondary, accent: colors.accent };
+
+    host.querySelectorAll("[data-theme-color]").forEach((input) => {
+      input.addEventListener("input", () => {
+        const key = input.dataset.themeColor;
+        // Live preview: recolour the whole admin UI as you pick.
+        document.documentElement.style.setProperty(`--color-${key}`, input.value);
+        const hex = host.querySelector(`[data-color-hex="${key}"]`);
+        if (hex) hex.textContent = input.value;
+      });
+    });
+
+    host.querySelector("#theme-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const payload = buildThemePayload(host, ov, initialColors);
+      await saveTheme(host, payload);
+    });
+
+    host.querySelector("#theme-reset-btn").addEventListener("click", async () => {
+      const ok = await Layout.confirmDialog({
+        title: I18n.t("admin.themeReset"),
+        description: I18n.t("admin.confirmDeleteGeneric"),
+        confirmLabel: I18n.t("admin.themeReset"),
+        cancelLabel: I18n.t("common.cancel"),
+        danger: true,
+      });
+      if (!ok) return;
+      await saveTheme(host, {});
+    });
+  }
+
+  function buildThemePayload(host, ov, initialColors) {
+    const payload = {};
+
+    // Colours: keep an existing override, or add one only when changed.
+    const colors = {};
+    host.querySelectorAll("[data-theme-color]").forEach((input) => {
+      const key = input.dataset.themeColor;
+      const changed = (initialColors[key] || "").toLowerCase() !== input.value.toLowerCase();
+      const wasOverride = ov.colors && Object.prototype.hasOwnProperty.call(ov.colors, key);
+      if (changed || wasOverride) colors[key] = input.value;
+    });
+    if (Object.keys(colors).length) payload.colors = colors;
+
+    // Text/URL fields keyed by dotted path -> nested object; drop empties.
+    host.querySelectorAll("[data-theme-field]").forEach((input) => {
+      const val = input.value.trim();
+      if (!val) return;
+      const parts = input.dataset.themeField.split(".");
+      let node = payload;
+      parts.forEach((p, i) => {
+        if (i === parts.length - 1) node[p] = val;
+        else node = node[p] = node[p] || {};
+      });
+    });
+    return payload;
+  }
+
+  async function saveTheme(host, payload) {
+    try {
+      const data = await Api.put("/admin/theme", payload, { auth: true });
+      Layout.toast(I18n.t("admin.savedSuccess"), "success");
+      // Apply + cache so the change shows across the site immediately.
+      if (window.Theme) {
+        Theme.apply(data.effective);
+        try { localStorage.setItem(Theme._key(), JSON.stringify(data.effective)); } catch (_) {}
+      }
+      renderThemeEditor(host, data);
+    } catch (err) {
+      Layout.toast(err.message, "error");
+    }
+  }
 
   // ============================================================
   // Boot
