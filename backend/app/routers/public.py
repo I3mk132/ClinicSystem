@@ -15,6 +15,7 @@ from app.models.user import ContactMethod, User, UserRole
 from app.schemas.public import (
     PublicAppointmentCreate,
     PublicAppointmentOut,
+    PublicAppointmentReschedule,
     PublicDepartmentOut,
     PublicDoctorOut,
 )
@@ -212,6 +213,63 @@ def cancel_public_appointment(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Appointment is already cancelled")
 
     appointment.status = AppointmentStatus.CANCELLED
+    db.commit()
+    db.refresh(appointment)
+    return _to_public_out(appointment)
+
+
+@router.post("/appointments/{appointment_id}/reschedule", response_model=PublicAppointmentOut)
+def reschedule_public_appointment(
+    appointment_id: int,
+    payload: PublicAppointmentReschedule,
+    phone: str = Query(..., min_length=5),
+    clinic: Clinic = Depends(get_api_key_clinic),
+    db: Session = Depends(get_db),
+):
+    appointment = (
+        db.query(Appointment)
+        .options(joinedload(Appointment.patient), joinedload(Appointment.doctor), joinedload(Appointment.department))
+        .filter(Appointment.id == appointment_id, Appointment.clinic_id == clinic.id)
+        .first()
+    )
+    if not appointment:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found")
+    if appointment.patient.phone != phone:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This appointment does not belong to this phone number")
+    if appointment.status == AppointmentStatus.CANCELLED:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot reschedule a cancelled appointment")
+    if payload.appointment_date < date_type.today():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot book a date in the past")
+
+    # Lock the doctor row to serialize concurrent bookings/reschedules.
+    doctor = (
+        db.query(Doctor)
+        .filter(Doctor.id == appointment.doctor_id, Doctor.clinic_id == clinic.id)
+        .with_for_update()
+        .first()
+    )
+    if not doctor:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Doctor not found")
+
+    # Free the old slot first (flush, not commit) so it becomes bookable again
+    # when checking availability - this also lets a same-slot no-op succeed and
+    # keeps the row lock held until the atomic commit below.
+    original_status = appointment.status
+    appointment.status = AppointmentStatus.CANCELLED
+    db.flush()
+
+    slot = find_matching_slot(db, appointment.doctor_id, payload.appointment_date, payload.start_time)
+    if slot is None:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This time is outside the doctor's working hours")
+    if not slot.is_available:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This time slot is no longer available")
+
+    appointment.appointment_date = payload.appointment_date
+    appointment.start_time = slot.start_time
+    appointment.end_time = slot.end_time
+    appointment.status = original_status
     db.commit()
     db.refresh(appointment)
     return _to_public_out(appointment)

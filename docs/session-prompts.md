@@ -216,7 +216,9 @@ cannot presign/delete into clinic B's prefix. Update CLAUDE.md.
 
 ---
 
-## Session 5 — Channel-agnostic AI bot backend (Gemini 1.5 Flash)
+## Session 5 — Channel-agnostic AI bot backend (Gemini 1.5 Flash) — ✅ DONE
+
+**Landed:** standalone `bot/` FastAPI service (no `backend/app` import, no DB). Channel-agnostic `ConversationEngine` + `web` adapter (`POST /bot/v1/chat`), `X-Bot-Tenant` → clinic API key registry. Gemini 1.5 Flash manual function calling over 8 tools, each a thin public-API wrapper. Identity (name/phone) lives in conversation state and is injected server-side — appointment tools take no phone arg, so a conversation can never read another phone's data (verified). Safety rails: length cap (413), per-conversation rate limit, TTL state store, tool-result prompt-injection stripping. Backend gained `POST /public/appointments/{id}/reschedule` (API-key, clinic-scoped, frees the old slot). `clinic-bot` compose service added. Verified: 13/13 bot isolation/safety checks + 10/10 backend reschedule + cross-tenant checks. CLAUDE.md updated.
 
 ```
 Read CLAUDE.md first. Requires multi-tenancy done. This session is backend only — the

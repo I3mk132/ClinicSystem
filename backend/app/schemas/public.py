@@ -24,6 +24,13 @@ class PublicAppointmentCreate(BaseModel):
     notes: Optional[str] = Field(default=None, max_length=500)
 
 
+class PublicAppointmentReschedule(BaseModel):
+    """Move an existing appointment to a new date/time (same doctor)."""
+
+    appointment_date: date
+    start_time: time
+
+
 class PublicDoctorOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int

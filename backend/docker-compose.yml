@@ -90,7 +90,34 @@ services:
       - default
       - cf-tunnel-net
 
-  
+  # Channel-agnostic AI bot (Session 5). Standalone: talks to clinic-api ONLY
+  # over the public REST API with each clinic's X-API-Key - no DB, no shared code.
+  clinic-bot:
+    build:
+      context: ../bot
+      dockerfile: Dockerfile
+    image: clinic-bot:latest
+    container_name: clinic-bot
+    restart: unless-stopped
+    ports:
+      - "9001:9000"
+    environment:
+      # Reach the API over the compose network (service name), not the tunnel.
+      CLINIC_API_BASE_URL: ${BOT_CLINIC_API_BASE_URL:-http://clinic-api:8000/api/v1}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:?Set GEMINI_API_KEY in the stack environment}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-1.5-flash}
+      # tenant=apikey pairs - the apikey is the clinic's public X-API-Key from the
+      # admin panel; the tenant string is sent by the widget as X-Bot-Tenant.
+      BOT_TENANTS: ${BOT_TENANTS:?Set BOT_TENANTS to tenant=apikey pairs}
+      CORS_ORIGINS: ${BOT_CORS_ORIGINS:-http://localhost:5500,http://127.0.0.1:5500}
+      MAX_MESSAGE_CHARS: ${BOT_MAX_MESSAGE_CHARS:-1000}
+      RATE_LIMIT_PER_MINUTE: ${BOT_RATE_LIMIT_PER_MINUTE:-20}
+      CONVERSATION_TTL_SECONDS: ${BOT_CONVERSATION_TTL_SECONDS:-3600}
+    depends_on:
+      - clinic-api
+    networks:
+      - default
+      - cf-tunnel-net
 
 volumes:
   clinic_data:
