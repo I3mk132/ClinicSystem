@@ -10,3 +10,5 @@ from app.models.schedule import DoctorAvailability, DoctorTimeOff  # noqa: F401
 from app.models.appointment import Appointment, AppointmentStatus  # noqa: F401
 from app.models.verification import VerificationCode, VerificationPurpose  # noqa: F401
 from app.models.api_key import ApiKey  # noqa: F401
+from app.models.section import ClinicSection, SectionKind  # noqa: F401
+from app.models.media import MediaAsset, MediaKind  # noqa: F401

@@ -11,6 +11,7 @@ from app.routers import (
     auth,
     departments,
     doctors,
+    media,
     public,
     schedules,
     superadmin,
@@ -60,4 +61,6 @@ app.include_router(api_keys.router, prefix=settings.API_V1_PREFIX)
 app.include_router(public.router, prefix=settings.API_V1_PREFIX)
 app.include_router(theme.public_router, prefix=settings.API_V1_PREFIX)
 app.include_router(theme.admin_router, prefix=settings.API_V1_PREFIX)
+app.include_router(media.admin_router, prefix=settings.API_V1_PREFIX)
+app.include_router(media.public_router, prefix=settings.API_V1_PREFIX)
 app.include_router(superadmin.router, prefix=settings.API_V1_PREFIX)

@@ -98,4 +98,50 @@ const Api = {
   put(path, body, opts = {}) { return this.request("PUT", path, { ...opts, body }); },
   patch(path, body, opts = {}) { return this.request("PATCH", path, { ...opts, body }); },
   delete(path, opts) { return this.request("DELETE", path, opts); },
+
+  /**
+   * Upload an image to Cloudflare R2 (Session 4) in three hops:
+   *   1. ask the backend for a presigned PUT URL (validates type/size, mints a
+   *      clinic-prefixed object key),
+   *   2. PUT the raw bytes straight to R2 - a bare fetch, NOT through request():
+   *      the presign signs the Content-Type, and any extra header (Authorization,
+   *      X-Clinic) would break the signature, so we send only Content-Type,
+   *   3. confirm back to the API to persist the MediaAsset row.
+   * Returns the created MediaAsset. `meta` may carry {alt_ar, alt_tr, section_id}.
+   */
+  async uploadMedia(file, kind, meta = {}) {
+    const presign = await this.post(
+      "/admin/media/presign",
+      { kind, content_type: file.type, size_bytes: file.size, filename: file.name },
+      { auth: true }
+    );
+
+    let putRes;
+    try {
+      putRes = await fetch(presign.upload_url, {
+        method: "PUT",
+        headers: presign.required_headers,
+        body: file,
+      });
+    } catch (networkError) {
+      throw new ApiError("تعذر رفع الملف / Dosya yüklenemedi", 0, networkError.message);
+    }
+    if (!putRes.ok) {
+      throw new ApiError(`R2 upload failed (HTTP ${putRes.status})`, putRes.status);
+    }
+
+    return this.post(
+      "/admin/media",
+      {
+        object_key: presign.object_key,
+        kind,
+        content_type: presign.content_type,
+        size_bytes: file.size,
+        alt_ar: meta.alt_ar ?? null,
+        alt_tr: meta.alt_tr ?? null,
+        section_id: meta.section_id ?? null,
+      },
+      { auth: true }
+    );
+  },
 };

@@ -67,6 +67,20 @@ class Settings(BaseSettings):
     TWILIO_AUTH_TOKEN: str = ""
     TWILIO_FROM_NUMBER: str = ""
 
+    # --- Media storage: Cloudflare R2 (S3-compatible, Session 4) ---
+    # Empty ACCESS_KEY => storage disabled; the media endpoints 503 instead of
+    # crashing, so the rest of the app runs fine without R2 configured.
+    R2_ACCOUNT_ID: str = ""
+    R2_ACCESS_KEY_ID: str = ""
+    R2_SECRET_ACCESS_KEY: str = ""
+    R2_BUCKET: str = ""
+    # Public read base (a bucket public dev URL or a custom domain bound to the
+    # bucket), no trailing slash. The object's public URL is this + "/" + key.
+    R2_PUBLIC_BASE_URL: str = ""
+    # Upload guard rails (enforced when issuing the presigned PUT URL).
+    MEDIA_MAX_BYTES: int = 5 * 1024 * 1024  # 5 MB
+    MEDIA_PRESIGN_EXPIRE_SECONDS: int = 300
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     @property

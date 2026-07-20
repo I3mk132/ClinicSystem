@@ -18,6 +18,7 @@ from app.models.clinic import Clinic
 from app.models.department import Department
 from app.models.doctor import Doctor
 from app.models.schedule import DoctorAvailability
+from app.models.section import ClinicSection, SectionKind
 from app.models.user import User, UserRole
 
 # Slug of the tenant everything seeded here belongs to. The frontend's
@@ -179,6 +180,29 @@ def seed_demo_data(db, clinic: Clinic):
     print(f"[seed] Created {len(departments)} departments and {len(doctors_data)} doctors with weekly schedules.")
 
 
+def seed_demo_sections(db, clinic: Clinic):
+    """A text-only welcome section so a fresh demo homepage isn't empty. Image
+    sections need real R2 uploads (see the admin Media panel), so we seed no
+    images here - the section renders fine without them."""
+    if db.query(ClinicSection).filter(ClinicSection.clinic_id == clinic.id).count() > 0:
+        print("[seed] Homepage sections already exist - skipping.")
+        return
+    db.add(
+        ClinicSection(
+            clinic_id=clinic.id,
+            kind=SectionKind.CUSTOM,
+            title_ar="لماذا تختار عيادتنا؟",
+            title_tr="Neden bizi seçmelisiniz?",
+            body_ar="فريق طبي متخصص، أحدث الأجهزة، وحجز موعدك في خطوة واحدة عبر الإنترنت.",
+            body_tr="Uzman sağlık ekibi, en yeni cihazlar ve tek adımda çevrimiçi randevu.",
+            sort_order=0,
+            is_active=True,
+        )
+    )
+    db.commit()
+    print("[seed] Created a demo homepage section.")
+
+
 def seed_demo_api_key(db, clinic: Clinic):
     if db.query(ApiKey).count() > 0:
         print("[seed] An API key already exists - skipping demo key.")
@@ -205,6 +229,7 @@ def main():
         seed_admin(db, clinic)
         if settings.SEED_DEMO_DATA:
             seed_demo_data(db, clinic)
+            seed_demo_sections(db, clinic)
             seed_demo_api_key(db, clinic)
         else:
             print("[seed] SEED_DEMO_DATA=false - skipping demo departments/doctors/API key.")

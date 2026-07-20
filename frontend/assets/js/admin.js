@@ -21,6 +21,7 @@
     if (tab === "departments") loadDepartments();
     if (tab === "schedules") loadScheduleDoctorOptions();
     if (tab === "theme") loadTheme();
+    if (tab === "media") loadMedia();
     if (tab === "integrations") loadApiKeys();
   }
 
@@ -645,7 +646,13 @@
           </div>
           <div class="field" style="margin-top:8px;">
             <label data-i18n="admin.themeLogoUrl"></label>
-            <input type="text" data-theme-field="logo_url" value="${esc(ov.logo_url || "")}" placeholder="https://…/logo.png">
+            <div class="row" style="gap:10px; align-items:center;">
+              <input type="text" data-theme-field="logo_url" value="${esc(ov.logo_url || "")}" placeholder="https://…/logo.png" style="flex:1;">
+              <label class="btn btn-ghost btn-sm" style="cursor:pointer; white-space:nowrap;">
+                <span data-i18n="admin.themeLogoUpload"></span>
+                <input type="file" accept="image/*" id="theme-logo-upload" hidden>
+              </label>
+            </div>
           </div>
         </div>
 
@@ -681,6 +688,23 @@
         const hex = host.querySelector(`[data-color-hex="${key}"]`);
         if (hex) hex.textContent = input.value;
       });
+    });
+
+    // Logo upload: push bytes to R2, drop the public URL into the field so a
+    // normal theme save persists it (same overrides path as a typed URL).
+    host.querySelector("#theme-logo-upload")?.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      e.target.value = "";
+      if (!file) return;
+      if (!/^image\//.test(file.type)) { Layout.toast(I18n.t("admin.mediaBadType"), "error"); return; }
+      Layout.toast(I18n.t("admin.mediaUploading"), "info");
+      try {
+        const asset = await Api.uploadMedia(file, "logo");
+        host.querySelector('[data-theme-field="logo_url"]').value = asset.url;
+        Layout.toast(I18n.t("admin.themeLogoUploaded"), "success");
+      } catch (err) {
+        Layout.toast(err.message, "error");
+      }
     });
 
     host.querySelector("#theme-form").addEventListener("submit", async (e) => {
@@ -742,6 +766,286 @@
     } catch (err) {
       Layout.toast(err.message, "error");
     }
+  }
+
+  // ============================================================
+  // Media & Homepage (R2 media library + content sections)
+  // ============================================================
+  let mediaState = { media: [], sections: [] };
+
+  const SECTION_KINDS = ["gallery", "equipment", "team", "custom"];
+
+  function sectionTitle(s) {
+    const t = I18n.lang === "ar" ? s.title_ar : s.title_tr;
+    return t || I18n.t("admin.sectionKind_" + s.kind);
+  }
+
+  async function loadMedia() {
+    const host = document.getElementById("media-editor");
+    host.innerHTML = `<div class="spinner"></div>`;
+    try {
+      if (!cache.doctors.length) await refreshCache();
+      const [media, sections] = await Promise.all([
+        Api.get("/admin/media", { auth: true }),
+        Api.get("/admin/sections", { auth: true }),
+      ]);
+      mediaState = { media, sections };
+    } catch (err) {
+      // Storage not configured (503) or any other error: show a friendly note.
+      host.innerHTML = `<div class="card card-pad"><p class="muted" style="margin:0;">${esc(err.message)}</p></div>`;
+      return;
+    }
+    renderMedia(host);
+  }
+
+  function mediaThumb(m, actionsHtml) {
+    const alt = esc((I18n.lang === "ar" ? m.alt_ar : m.alt_tr) || "");
+    return `
+      <div class="card" style="overflow:hidden;">
+        <img src="${esc(m.url)}" alt="${alt}" loading="lazy"
+             style="width:100%; aspect-ratio:4/3; object-fit:cover; background:var(--color-bg-alt); display:block;">
+        <div style="padding:8px; display:flex; flex-direction:column; gap:6px;">
+          <span class="badge">${esc(m.kind)}</span>
+          ${actionsHtml}
+        </div>
+      </div>`;
+  }
+
+  function renderMedia(host) {
+    const { media, sections } = mediaState;
+    const library = media.filter((m) => m.section_id == null);
+
+    const sectionOptions = (selected) =>
+      `<option value="">${esc(I18n.t("admin.mediaLibrary"))}</option>` +
+      sections.map((s) => `<option value="${s.id}" ${s.id === selected ? "selected" : ""}>${esc(sectionTitle(s))}</option>`).join("");
+    const doctorOptions = () =>
+      `<option value="">${esc(I18n.t("admin.mediaAssignDoctor"))}</option>` +
+      cache.doctors.map((d) => `<option value="${d.id}">${esc(d.full_name)}</option>`).join("");
+
+    const libraryCards = library.length
+      ? library
+          .map((m) =>
+            mediaThumb(
+              m,
+              `<select data-media-section="${m.id}" class="btn-sm" style="width:100%;">${sectionOptions(null)}</select>
+               <select data-media-doctor="${m.id}" class="btn-sm" style="width:100%;">${doctorOptions()}</select>
+               <button class="btn btn-danger-ghost btn-sm" data-media-del="${m.id}">${esc(I18n.t("common.delete"))}</button>`
+            )
+          )
+          .join("")
+      : `<p class="muted">${esc(I18n.t("admin.mediaEmpty"))}</p>`;
+
+    const sectionsHtml = sections.length
+      ? sections.map((s, i) => renderSectionCard(s, i, sections.length)).join("")
+      : `<p class="muted">${esc(I18n.t("admin.sectionsEmpty"))}</p>`;
+
+    host.innerHTML = `
+      <div class="card card-pad" style="margin-bottom:20px;">
+        <div class="row" style="justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <h4 style="margin:0;" data-i18n="admin.mediaLibrary"></h4>
+          <label class="btn btn-primary btn-sm" style="cursor:pointer;">
+            <span data-i18n="admin.mediaUpload"></span>
+            <input type="file" accept="image/*" data-upload-library hidden>
+          </label>
+        </div>
+        <div class="grid grid-4" id="media-library-grid">${libraryCards}</div>
+      </div>
+
+      <div class="card card-pad">
+        <div class="row" style="justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <h4 style="margin:0;" data-i18n="admin.homepageSections"></h4>
+          <button class="btn btn-primary btn-sm" id="add-section-btn" data-i18n="admin.addSection"></button>
+        </div>
+        <div id="sections-list" style="display:flex; flex-direction:column; gap:16px;">${sectionsHtml}</div>
+      </div>`;
+    I18n.translateDom(host);
+    wireMediaEvents(host);
+  }
+
+  function renderSectionCard(s, index, total) {
+    const imgs = mediaState.media.filter((m) => m.section_id === s.id);
+    const imgCards = imgs.length
+      ? imgs
+          .map((m) =>
+            mediaThumb(
+              m,
+              `<button class="btn btn-ghost btn-sm" data-detach-media="${m.id}">${esc(I18n.t("admin.sectionDetach"))}</button>
+               <button class="btn btn-danger-ghost btn-sm" data-media-del="${m.id}">${esc(I18n.t("common.delete"))}</button>`
+            )
+          )
+          .join("")
+      : `<p class="muted" style="margin:0;">${esc(I18n.t("admin.sectionNoImages"))}</p>`;
+
+    return `
+      <div class="card card-pad" data-section-card="${s.id}" style="border:1px solid var(--color-border);">
+        <div class="row" style="justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap;">
+          <div>
+            <strong>${esc(sectionTitle(s))}</strong>
+            <span class="badge" style="margin-inline-start:8px;">${esc(s.kind)}</span>
+            ${s.is_active ? "" : `<span class="badge badge-cancelled" style="margin-inline-start:6px;">${esc(I18n.t("common.inactive"))}</span>`}
+          </div>
+          <div class="row" style="gap:6px;">
+            <button class="btn btn-ghost btn-sm" data-section-up="${s.id}" ${index === 0 ? "disabled" : ""}>↑</button>
+            <button class="btn btn-ghost btn-sm" data-section-down="${s.id}" ${index === total - 1 ? "disabled" : ""}>↓</button>
+            <button class="btn btn-ghost btn-sm" data-section-edit="${s.id}">${esc(I18n.t("common.edit"))}</button>
+            <button class="btn btn-danger-ghost btn-sm" data-section-del="${s.id}">${esc(I18n.t("common.delete"))}</button>
+          </div>
+        </div>
+        <div class="grid grid-4" style="margin-top:14px;">${imgCards}</div>
+        <div class="row" style="margin-top:12px;">
+          <label class="btn btn-ghost btn-sm" style="cursor:pointer;">
+            <span data-i18n="admin.sectionAddImage"></span>
+            <input type="file" accept="image/*" data-upload-section="${s.id}" hidden>
+          </label>
+        </div>
+      </div>`;
+  }
+
+  function sectionFields() {
+    return [
+      { name: "kind", label: I18n.t("admin.sectionKindLabel"), type: "select", required: true,
+        options: SECTION_KINDS.map((k) => ({ value: k, label: I18n.t("admin.sectionKind_" + k) })) },
+      { name: "title_ar", label: I18n.t("admin.nameAr") },
+      { name: "title_tr", label: I18n.t("admin.nameTr") },
+      { name: "body_ar", label: I18n.t("admin.descriptionAr"), type: "textarea" },
+      { name: "body_tr", label: I18n.t("admin.descriptionTr"), type: "textarea" },
+      { name: "is_active", label: I18n.t("common.active"), type: "checkbox" },
+    ];
+  }
+
+  function sectionModal(id) {
+    const existing = id ? mediaState.sections.find((s) => s.id === id) : null;
+    openFormModal({
+      title: I18n.t(existing ? "admin.editSection" : "admin.addSection"),
+      fields: sectionFields(),
+      initialValues: existing || { is_active: true, kind: "gallery" },
+      onSubmit: async (values) => {
+        if (existing) await Api.patch(`/admin/sections/${existing.id}`, values, { auth: true });
+        else await Api.post("/admin/sections", values, { auth: true });
+        Layout.toast(I18n.t("admin.savedSuccess"), "success");
+        await loadMedia();
+      },
+    });
+  }
+
+  async function uploadInto(file, kind, sectionId) {
+    if (!file) return;
+    if (!/^image\//.test(file.type)) {
+      Layout.toast(I18n.t("admin.mediaBadType"), "error");
+      return;
+    }
+    Layout.toast(I18n.t("admin.mediaUploading"), "info");
+    try {
+      await Api.uploadMedia(file, kind, sectionId ? { section_id: sectionId } : {});
+      Layout.toast(I18n.t("admin.savedSuccess"), "success");
+      await loadMedia();
+    } catch (err) {
+      Layout.toast(err.message, "error");
+    }
+  }
+
+  async function deleteMedia(id) {
+    const ok = await Layout.confirmDialog({
+      title: I18n.t("common.delete"),
+      description: I18n.t("admin.confirmDeleteGeneric"),
+      confirmLabel: I18n.t("common.delete"),
+      cancelLabel: I18n.t("common.cancel"),
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await Api.delete(`/admin/media/${id}`, { auth: true });
+      Layout.toast(I18n.t("admin.deletedSuccess"), "success");
+      await loadMedia();
+    } catch (err) {
+      Layout.toast(err.message, "error");
+    }
+  }
+
+  async function moveSection(id, dir) {
+    const ids = mediaState.sections.map((s) => s.id);
+    const i = ids.indexOf(id);
+    const j = i + dir;
+    if (j < 0 || j >= ids.length) return;
+    [ids[i], ids[j]] = [ids[j], ids[i]];
+    try {
+      await Api.post("/admin/sections/reorder", { section_ids: ids }, { auth: true });
+      await loadMedia();
+    } catch (err) {
+      Layout.toast(err.message, "error");
+    }
+  }
+
+  function wireMediaEvents(host) {
+    host.querySelector("[data-upload-library]")?.addEventListener("change", (e) => {
+      uploadInto(e.target.files[0], "gallery", null);
+      e.target.value = "";
+    });
+    host.querySelectorAll("[data-upload-section]").forEach((inp) =>
+      inp.addEventListener("change", (e) => {
+        uploadInto(e.target.files[0], "section_image", Number(inp.dataset.uploadSection));
+        e.target.value = "";
+      })
+    );
+    host.querySelectorAll("[data-media-del]").forEach((btn) =>
+      btn.addEventListener("click", () => deleteMedia(Number(btn.dataset.mediaDel)))
+    );
+    host.querySelectorAll("[data-detach-media]").forEach((btn) =>
+      btn.addEventListener("click", async () => {
+        await Api.patch(`/admin/media/${btn.dataset.detachMedia}`, { section_id: null }, { auth: true });
+        await loadMedia();
+      })
+    );
+    host.querySelectorAll("[data-media-section]").forEach((sel) =>
+      sel.addEventListener("change", async () => {
+        const sid = sel.value ? Number(sel.value) : null;
+        await Api.patch(`/admin/media/${sel.dataset.mediaSection}`, { section_id: sid }, { auth: true });
+        Layout.toast(I18n.t("admin.savedSuccess"), "success");
+        await loadMedia();
+      })
+    );
+    host.querySelectorAll("[data-media-doctor]").forEach((sel) =>
+      sel.addEventListener("change", async () => {
+        if (!sel.value) return;
+        const media = mediaState.media.find((m) => m.id === Number(sel.dataset.mediaDoctor));
+        try {
+          await Api.patch(`/doctors/${sel.value}`, { photo_url: media.url }, { auth: true });
+          Layout.toast(I18n.t("admin.mediaAssignedDoctor"), "success");
+        } catch (err) {
+          Layout.toast(err.message, "error");
+        }
+        sel.value = "";
+      })
+    );
+    host.querySelector("#add-section-btn")?.addEventListener("click", () => sectionModal(null));
+    host.querySelectorAll("[data-section-edit]").forEach((btn) =>
+      btn.addEventListener("click", () => sectionModal(Number(btn.dataset.sectionEdit)))
+    );
+    host.querySelectorAll("[data-section-del]").forEach((btn) =>
+      btn.addEventListener("click", async () => {
+        const ok = await Layout.confirmDialog({
+          title: I18n.t("common.delete"),
+          description: I18n.t("admin.confirmDeleteSection"),
+          confirmLabel: I18n.t("common.delete"),
+          cancelLabel: I18n.t("common.cancel"),
+          danger: true,
+        });
+        if (!ok) return;
+        try {
+          await Api.delete(`/admin/sections/${btn.dataset.sectionDel}`, { auth: true });
+          Layout.toast(I18n.t("admin.deletedSuccess"), "success");
+          await loadMedia();
+        } catch (err) {
+          Layout.toast(err.message, "error");
+        }
+      })
+    );
+    host.querySelectorAll("[data-section-up]").forEach((btn) =>
+      btn.addEventListener("click", () => moveSection(Number(btn.dataset.sectionUp), -1))
+    );
+    host.querySelectorAll("[data-section-down]").forEach((btn) =>
+      btn.addEventListener("click", () => moveSection(Number(btn.dataset.sectionDown), 1))
+    );
   }
 
   // ============================================================

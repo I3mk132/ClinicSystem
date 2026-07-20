@@ -160,7 +160,23 @@ Update CLAUDE.md.
 
 ---
 
-## Session 4 — Cloudflare R2 media library + homepage content sections
+## Session 4 — Cloudflare R2 media library + homepage content sections ✅ DONE (2026-07-20)
+
+Landed: R2 storage via `app/storage.py` (lazy boto3, S3v4 presigned PUT, `is_enabled()`
+gate → 503 when unconfigured). Two tenant-owned tables + migration `0005`: `MediaAsset`
+(kind logo/doctor_photo/equipment/gallery/section_image, unique clinic-prefixed
+`object_key`, nullable `section_id`) and `ClinicSection` (kind gallery/equipment/team/
+custom, bilingual title+body, `sort_order`, `is_active`). `routers/media.py`: admin media
+presign/confirm/list/patch/delete + section CRUD/reorder (all scoped to `admin.clinic_id`),
+no-auth `GET /public/sections` (X-Clinic). Isolation lives in the **server-generated,
+clinic-prefixed key** — confirm/delete reject keys outside `clinics/{clinic_id}/`. Frontend:
+`Api.uploadMedia` three-hop upload (presign → bare PUT to R2 → confirm), admin **Media &
+Homepage** panel (library + section CRUD + reorder + assign-to-doctor + logo upload wired
+into the Theme panel), homepage renders sections (`home.js` → `#clinic-sections`, bilingual,
+lazy, `esc()`). R2 env vars in `docker-compose.yml`/`.env.example`; CLAUDE.md updated.
+Verified (TestClient, 24/24): presign signs + clinic-prefixes, oversize→413, bad type→422,
+confirm idempotent, public sections isolated per clinic, clinic B can't claim A's key / use
+A's section / reorder A / see A's media, section delete detaches images, R2-off→503.
 
 ```
 Read CLAUDE.md first. Requires multi-tenancy + theme sessions done.
