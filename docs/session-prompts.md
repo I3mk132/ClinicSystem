@@ -279,7 +279,11 @@ architecture.
 
 ---
 
-## Session 6 — Web chat widget (frontend)
+## Session 6 — Web chat widget (frontend) — ✅ DONE
+
+**Landed:** `frontend/assets/js/chatbot.js` + `frontend/assets/css/chatbot.css` (a `Chatbot` IIFE global) on the public visitor pages (`index.html`, `booking.html`, `my-appointments.html`, last in the script chain). Floating action button + slide-up panel, theme-CSS-variable-driven, RTL-aware (bottom-left in Arabic / bottom-right in Turkish, full-height sheet on mobile), typing indicator, timestamps, reset button. Talks to the Session 5 bot at `POST {BOT_BASE_URL}/bot/v1/chat` with the `X-Bot-Tenant` header via a bare `fetch` (new `config.js` vars `BOT_BASE_URL` + `BOT_TENANT`). `conversation_id` + transcript persist in `localStorage` (per slug); logged-in users seed identity (name+phone) once; guests are asked in-chat. Admin **Chatbot** toggle added to the Theme panel, stored as `chatbot_enabled` in the theme overrides layer (backend: `ThemeOverridesIn` + `effective_theme`, default on) and served over `GET /public/theme` — widget mounts/unmounts on `clinic:themechange`. i18n `chatbot.*` keys in `ar/tr.json`, re-render on `clinic:langchange`; all bot/user text `esc()`'d. Only backend change: the `chatbot_enabled` theme field. **The roadmap is now fully complete (Sessions 1–6).**
+
+<details><summary>Original prompt</summary>
 
 ```
 Read CLAUDE.md first. Requires the bot backend (Session 5) running.
@@ -316,6 +320,8 @@ Verify in the browser: full booking conversation through the widget in Arabic an
 Turkish, RTL layout correct, works logged-in and logged-out, disabled toggle hides
 it. Update CLAUDE.md.
 ```
+
+</details>
 
 ---
 

@@ -669,6 +669,15 @@
           ${bilingual("themeFooterText", ovGet("footer.ar"), ovGet("footer.tr"), 'data-theme-field="footer.ar"', 'data-theme-field="footer.tr"')}
         </div>
 
+        <div class="card card-pad" style="margin-bottom:18px;">
+          <h4 style="margin-top:0;" data-i18n="admin.chatbotSection"></h4>
+          <label class="row" style="gap:10px; align-items:center; cursor:pointer;">
+            <input type="checkbox" data-cb-enabled ${eff.chatbot_enabled !== false ? "checked" : ""}>
+            <span data-i18n="admin.chatbotEnabled"></span>
+          </label>
+          <p class="muted" style="margin:8px 0 0;" data-i18n="admin.chatbotHint"></p>
+        </div>
+
         <div class="row" style="justify-content:flex-end; gap:10px;">
           <button type="button" class="btn btn-danger-ghost" id="theme-reset-btn" data-i18n="admin.themeReset"></button>
           <button type="submit" class="btn btn-primary">${I18n.t("common.save")}</button>
@@ -750,6 +759,12 @@
         else node = node[p] = node[p] || {};
       });
     });
+
+    // Web chat widget toggle (Session 6). Persist the explicit boolean so the
+    // public theme can hide the widget when off.
+    const cb = host.querySelector("[data-cb-enabled]");
+    if (cb) payload.chatbot_enabled = cb.checked;
+
     return payload;
   }
 

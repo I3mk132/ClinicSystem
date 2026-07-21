@@ -18,5 +18,14 @@ window.CLINIC_CONFIG = {
     ar: "عيادة ديجيفو الطبية",
     tr: "dijivoo Klinik",
   },
-  CLINIC_LOGO_URL: "https://cdn-clinic.dijivoo.com/logo.png" // e.g. "assets/images/logo.png" - falls back to a generated mark
+  CLINIC_LOGO_URL: "https://cdn-clinic.dijivoo.com/logo.png", // e.g. "assets/images/logo.png" - falls back to a generated mark
+
+  // Web chat widget (Session 6). Base URL of the standalone bot service
+  // (backend/../bot, POST /bot/v1/chat). Leave blank to disable the widget
+  // regardless of the per-clinic toggle. No trailing slash.
+  BOT_BASE_URL: "https://clinic-bot.dijivoo.com",
+  // The bot tenant, sent as the `X-Bot-Tenant` header (mirrors X-Clinic).
+  // Must match a key in the bot service's BOT_TENANTS registry. Defaults to
+  // CLINIC_SLUG when blank.
+  BOT_TENANT: ""
 };

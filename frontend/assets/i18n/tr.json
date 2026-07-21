@@ -226,7 +226,10 @@
     "sectionKind_equipment": "Ekipman ve tesisler",
     "sectionKind_team": "Sağlık ekibi",
     "sectionKind_custom": "Özel bölüm",
-    "confirmDeleteSection": "Bu bölümü silmek istediğinize emin misiniz? Görselleri ayrılır ve kütüphanede kalır."
+    "confirmDeleteSection": "Bu bölümü silmek istediğinize emin misiniz? Görselleri ayrılır ve kütüphanede kalır.",
+    "chatbotSection": "Sohbet Botu",
+    "chatbotEnabled": "Sohbet botunu sitede etkinleştir",
+    "chatbotHint": "Etkinleştirildiğinde ziyaretçilere sayfa köşesinde sohbet penceresi gösterilir."
   },
   "forgotPassword": {
     "title": "Şifre Kurtarma",
@@ -254,5 +257,13 @@
     "cancelled": "İptal Edildi",
     "completed": "Tamamlandı",
     "no_show": "Gelmedi"
+  },
+  "chatbot": {
+    "status": "Çevrimiçi",
+    "placeholder": "Bir mesaj yazın…",
+    "greeting": "Merhaba! Ben klinik asistanıyım. Randevu almanıza nasıl yardımcı olabilirim?",
+    "reset": "Yeni sohbet",
+    "error": "Bir şeyler ters gitti. Lütfen tekrar deneyin.",
+    "offline": "Asistana ulaşılamıyor. Lütfen daha sonra tekrar deneyin."
   }
 }

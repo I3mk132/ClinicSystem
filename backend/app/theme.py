@@ -102,4 +102,7 @@ def effective_theme(clinic: Clinic) -> Dict[str, Any]:
             "address": _lang_pair((overrides.get("contact") or {}).get("address")),
         },
         "footer": _lang_pair(overrides.get("footer")),
+        # Web chat widget (Session 6). Enabled unless the admin explicitly
+        # stored False, so a fresh clinic gets the bot by default.
+        "chatbot_enabled": overrides.get("chatbot_enabled") is not False,
     }

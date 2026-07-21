@@ -84,6 +84,9 @@ class ThemeOverridesIn(BaseModel):
     hero: Optional[ThemeHeroIn] = None
     contact: Optional[ThemeContactIn] = None
     footer: Optional[LangText] = None
+    # Web chat widget on/off (Session 6). Absent overrides => enabled by default;
+    # persist an explicit False to hide the widget for this clinic.
+    chatbot_enabled: Optional[bool] = None
 
     @field_validator("logo_url")
     @classmethod
